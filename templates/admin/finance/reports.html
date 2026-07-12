@@ -1,0 +1,71 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Finance — Reports{% endblock %}
+{% block page_title %}Finance{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Reports</h2>
+    <p class="text-sm text-ink-500 mt-1">Period summaries for handover and audit.</p>
+  </div>
+</div>
+
+<div class="card p-6">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+      <i data-lucide="bar-chart-3" class="w-5 h-5 text-forest-600"></i> Semester Summary
+    </h3>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="stat-tile">
+      <p class="stat-label">Total Income</p>
+      <p class="stat-value mt-2">{{ total_income | money }}</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Total Expenses</p>
+      <p class="stat-value mt-2">{{ total_expenses | money }}</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Net Balance</p>
+      <p class="stat-value mt-2 {% if net_balance < 0 %}text-red-600{% endif %}">{{ net_balance | money }}</p>
+    </div>
+  </div>
+
+  <!-- Expense breakdown by category -->
+  {% set expense_by_cat = {} %}
+  {% for x in expenses %}
+    {% if x.category in expense_by_cat %}
+      {% set _ = expense_by_cat.update({x.category: expense_by_cat[x.category] + x.amount}) %}
+    {% else %}
+      {% set _ = expense_by_cat.update({x.category: x.amount}) %}
+    {% endif %}
+  {% endfor %}
+
+  {% if expense_by_cat %}
+  <div>
+    <h4 class="font-bold text-forest-900 mb-4">Expenses by Category</h4>
+    <div class="space-y-4">
+      {% set max_cat_val = expense_by_cat.values() | max %}
+      {% for cat, amt in expense_by_cat.items() %}
+      {% set pct = ((amt / max_cat_val) * 100) | int %}
+      <div>
+        <div class="flex items-center justify-between text-sm mb-1.5">
+          <span class="font-semibold text-forest-900">{{ cat }}</span>
+          <span class="text-ink-500">{{ amt | money }}</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill progress-fill-gold" style="width:{{ pct }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

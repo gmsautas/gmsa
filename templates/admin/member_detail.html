@@ -1,0 +1,226 @@
+{% extends "admin_base.html" %}
+
+{% block title %}{{ member.name }}{% endblock %}
+{% block page_title %}Member Detail{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <a href="/admin/members" class="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:text-forest-900">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Members
+  </a>
+</div>
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+{% if created %}
+<div class="mb-6 rounded-lg bg-forest-50 border border-forest-200 px-4 py-3 text-sm text-forest-800 font-medium" role="alert">
+  Account created. A one-click setup link has been emailed to {{ member.email }} so they can set their own password.
+  {% if email_failed %}<br><span class="text-red-700">The welcome email failed to send — use "Reset Password" below to issue a password directly instead.</span>{% endif %}
+</div>
+{% endif %}
+
+{% if revealed %}
+<div class="mb-6 rounded-lg bg-amber-50 border border-amber-300 px-4 py-3 text-sm text-amber-900" role="alert">
+  <p class="font-semibold mb-1">
+    New password for {{ revealed.user.name }} ({{ revealed.user.email }})
+    {% if not revealed.email_sent %}— <span class="text-red-700">the notification email failed to send, so this is the only copy</span>{% endif %}
+  </p>
+  <p>
+    Read this to them directly (phone, in person, WhatsApp, etc.) — it will not be shown again:
+    <code class="ml-1 px-2 py-0.5 rounded bg-white border border-amber-300 font-mono text-base font-bold tracking-wide">{{ revealed.password }}</code>
+  </p>
+  {% if revealed.email_sent %}<p class="mt-1 text-xs text-amber-700">A copy was also emailed to them, in case it does arrive.</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <!-- Member Profile Card -->
+  <div class="card p-6">
+    <div class="flex flex-col items-center text-center mb-6">
+      <div class="avatar w-16 h-16 text-xl mb-3">{{ member.initials }}</div>
+      <h2 class="font-bold text-xl text-forest-900">{{ member.name }}</h2>
+      <p class="text-sm text-ink-500 mt-1">{{ member.email }}</p>
+      <div class="flex gap-2 mt-3">
+        <span class="badge {% if member.role == 'superadmin' %}badge-gold{% elif member.role == 'admin' %}badge-green{% else %}badge-gray{% endif %}">
+          {{ member.role }}
+        </span>
+        <span class="badge {% if member.status == 'active' %}badge-green{% else %}badge-gray{% endif %}">
+          {{ member.status }}
+        </span>
+      </div>
+    </div>
+
+    <dl class="space-y-3 text-sm">
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">Phone</dt>
+        <dd class="font-medium text-forest-900">{{ member.phone or '—' }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">Program</dt>
+        <dd class="font-medium text-forest-900 text-right">{{ member.program or '—' }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">Category</dt>
+        <dd class="font-medium text-forest-900">{{ member.program_category or '—' }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">Student ID</dt>
+        <dd class="font-medium text-forest-900">{{ member.student_id or '—' }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">Grad Year</dt>
+        <dd class="font-medium text-forest-900">{{ effective_grad_year or '—' }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">SMS Opt-in</dt>
+        <dd class="font-medium text-forest-900">{{ 'Yes' if member.sms_opt_in else 'No' }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">Email Opt-in</dt>
+        <dd class="font-medium text-forest-900">{{ 'Yes' if member.email_opt_in else 'No' }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
+        <dt class="text-ink-500">Joined</dt>
+        <dd class="font-medium text-forest-900">{{ member.created_at | datetimeformat }}</dd>
+      </div>
+    </dl>
+  </div>
+
+  <!-- Update Form + Dues Records -->
+  <div class="lg:col-span-2 space-y-6">
+    <!-- Update Role / Status -->
+    <div class="card p-6">
+      <h3 class="font-bold text-forest-900 text-lg mb-4">Update Account</h3>
+      <form method="post" action="/admin/members/{{ member.id }}" class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="field-label" for="edit-role">Role</label>
+          {% if admin.role == 'superadmin' %}
+          <select id="edit-role" name="role" class="field-select">
+            <option value="">— no change —</option>
+            <option value="member" {% if member.role == 'member' %}selected{% endif %}>Member</option>
+            <option value="admin" {% if member.role == 'admin' %}selected{% endif %}>Admin</option>
+            <option value="superadmin" {% if member.role == 'superadmin' %}selected{% endif %}>Super Admin</option>
+          </select>
+          {% else %}
+          <p class="field-input bg-cream-100 text-ink-500">{{ member.role }} <span class="text-xs">(super admin only)</span></p>
+          {% endif %}
+        </div>
+        <div>
+          <label class="field-label" for="edit-status">Account Status</label>
+          <select id="edit-status" name="status" class="field-select">
+            <option value="">— no change —</option>
+            <option value="active" {% if member.status == 'active' %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if member.status == 'inactive' %}selected{% endif %}>Inactive</option>
+          </select>
+        </div>
+        <div class="sm:col-span-2 flex justify-end">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+      <div class="mt-4 pt-4 border-t border-cream-200 flex justify-end">
+        <form method="post" action="/admin/members/{{ member.id }}/reset-password" onsubmit="return confirm('Issue a new password for {{ member.name }}? Their current password stops working immediately.');">
+          <button type="submit" class="btn btn-outline btn-sm">
+            <i data-lucide="key-round" class="w-3.5 h-3.5"></i> Reset Password
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Academic Record -->
+    <div class="card p-6">
+      <h3 class="font-bold text-forest-900 text-lg mb-1">Academic Record</h3>
+      <p class="text-sm text-ink-500 mb-4">
+        Level and graduation year are normally computed from the student ID and program category.
+        Only set an override for cases the formula can't handle on its own — e.g. a diploma graduate
+        continuing straight into a degree program at level 200, or a student rusticated for a year.
+      </p>
+      <div class="grid sm:grid-cols-2 gap-4 mb-4 text-sm">
+        <div>
+          <p class="text-ink-500">Computed Level</p>
+          <p class="font-semibold text-forest-900">{{ computed_level or '—' }}</p>
+        </div>
+        <div>
+          <p class="text-ink-500">Computed Graduation Year</p>
+          <p class="font-semibold text-forest-900">{{ member.grad_year or '—' }}</p>
+        </div>
+        <div>
+          <p class="text-ink-500">Effective Level <span class="text-xs font-normal">(used everywhere)</span></p>
+          <p class="font-semibold text-forest-900">{{ effective_level or '—' }}</p>
+        </div>
+        <div>
+          <p class="text-ink-500">Effective Graduation Year <span class="text-xs font-normal">(used everywhere)</span></p>
+          <p class="font-semibold text-forest-900">{{ effective_grad_year or '—' }}</p>
+        </div>
+      </div>
+      <form method="post" action="/admin/members/{{ member.id }}" class="grid sm:grid-cols-2 gap-4">
+        <input type="hidden" name="next" value="/admin/members/{{ member.id }}" />
+        <div>
+          <label class="field-label" for="level-override">Level Override</label>
+          <input id="level-override" name="level_override" type="number" step="100" min="0" class="field-input" value="{{ member.level_override or '' }}" placeholder="e.g. 200" />
+        </div>
+        <div>
+          <label class="field-label" for="grad-year-override">Graduation Year Override</label>
+          <input id="grad-year-override" name="grad_year_override" type="number" class="field-input" value="{{ member.grad_year_override or '' }}" placeholder="e.g. 2027" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="field-label" for="override-note">Reason <span class="text-ink-400 font-normal">(recommended)</span></label>
+          <textarea id="override-note" name="academic_override_note" class="field-textarea" placeholder="e.g. Diploma to Degree continuation, entered at 200 level">{{ member.academic_override_note or '' }}</textarea>
+        </div>
+        <div class="sm:col-span-2 flex justify-end">
+          <button type="submit" class="btn btn-primary">Save Academic Record</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Dues Records -->
+    <div class="card p-6">
+      <h3 class="font-bold text-forest-900 text-lg mb-4 flex items-center gap-2">
+        <i data-lucide="circle-dollar-sign" class="w-5 h-5 text-forest-600"></i> Dues History
+      </h3>
+      {% if dues_records %}
+      <div class="table-card" x-data="tablePager({{ dues_records | length }}, 10)">
+        <div class="table-scroll">
+          <table class="table-base table-collapse">
+            <thead>
+              <tr>
+                <th>Semester</th>
+                <th>Due Date</th>
+                <th>Paid At</th>
+                <th>Status</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in dues_records %}
+              <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+                <td data-label="Semester" class="font-medium text-forest-900">{{ d.semester }}</td>
+                <td data-label="Due Date" class="whitespace-nowrap">{{ d.due_date | datetimeformat("%d %b %Y") }}</td>
+                <td data-label="Paid At" class="whitespace-nowrap text-ink-500">{{ d.paid_at | datetimeformat if d.paid_at else '—' }}</td>
+                <td data-label="Status">
+                  <span class="badge {% if d.status == 'paid' %}badge-green{% elif d.status == 'unpaid' %}badge-red{% else %}badge-gold{% endif %}">
+                    {{ d.status }}
+                  </span>
+                </td>
+                <td data-label="Amount" class="text-right font-semibold">{{ d.amount | money }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% include "partials/table_pager_foot.html" %}
+      </div>
+      {% else %}
+      <p class="text-sm text-ink-500">No dues records found for this member.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

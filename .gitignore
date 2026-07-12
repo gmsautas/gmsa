@@ -1,0 +1,41 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environments / secrets
+.env
+.env.example
+.env.gmail-local
+.gmail_send_state.json
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code local tooling (agent worktrees, plan files)
+.claude/
+
+# User-uploaded content (payment proofs, candidate photos, blog images, etc.)
+# — real user data, never belongs in version control.
+static/uploads/
+
+# Voter/member register imports (real names, emails, phone numbers) — never
+# belongs in version control. A real one was committed by mistake and had to
+# be purged from history; this is a backstop against a repeat.
+*.xlsx
+*.xls
+
+scripts/*
+tests/

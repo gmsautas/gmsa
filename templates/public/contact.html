@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% import "partials/social_icons.html" as social_icons %}
+
+{% block title %}GMSA UTAS — Contact Us{% endblock %}
+{% block meta %}<meta name="description" content="Get in touch with GMSA UTAS — find our address, email, phone, social links, and a contact form for general inquiries, membership and partnerships." />{% endblock %}
+
+{% block content %}
+
+  <!-- ============================ PAGE HEADER ============================ -->
+  <section class="islamic-pattern bg-forest-900 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <p class="eyebrow text-gold-400">Get In Touch</p>
+      <h1 class="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">Contact GMSA UTAS</h1>
+      <p class="mt-3 text-forest-100 max-w-2xl leading-relaxed">
+        Have a question, idea or just want to say salaam? Reach out to us through any of the
+        channels below, or send us a message using the form.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ CONTACT INFO CARDS ============================ -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+    <div class="grid sm:grid-cols-3 gap-6">
+      <div class="card card-hover p-6 text-center" data-animate>
+        <span class="w-12 h-12 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 mx-auto mb-4">
+          <i data-lucide="map-pin" class="w-6 h-6" aria-hidden="true"></i>
+        </span>
+        <p class="eyebrow">Visit Us</p>
+        <p class="mt-2 font-semibold text-ink-900 leading-relaxed">
+          {{ org.address if org and org.address else 'Student Centre, Level 2, Room 204, UTAS Campus' }}
+        </p>
+      </div>
+      <div class="card card-hover p-6 text-center" data-animate>
+        <span class="w-12 h-12 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 mx-auto mb-4">
+          <i data-lucide="mail" class="w-6 h-6" aria-hidden="true"></i>
+        </span>
+        <p class="eyebrow">Email Us</p>
+        <p class="mt-2 font-semibold text-ink-900">
+          {% if org and org.email %}
+          <a href="mailto:{{ org.email }}" class="hover:text-forest-700">{{ org.email }}</a>
+          {% else %}
+          <a href="mailto:info@gmsautas.org" class="hover:text-forest-700">info@gmsautas.org</a>
+          {% endif %}
+        </p>
+      </div>
+      <div class="card card-hover p-6 text-center" data-animate>
+        <span class="w-12 h-12 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 mx-auto mb-4">
+          <i data-lucide="phone" class="w-6 h-6" aria-hidden="true"></i>
+        </span>
+        <p class="eyebrow">Call Us</p>
+        <p class="mt-2 font-semibold text-ink-900">
+          {% if org and org.phone %}
+          <a href="tel:{{ org.phone | replace(' ', '') }}" class="hover:text-forest-700">{{ org.phone }}</a>
+          {% else %}
+          <a href="tel:+233500000000" class="hover:text-forest-700">+233 50 000 0000</a>
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ CONTACT FORM + MAP/SOCIAL ============================ -->
+  <section class="bg-cream-50 border-y border-cream-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 grid lg:grid-cols-2 gap-10">
+
+      <!-- Contact form -->
+      <div class="card p-6 sm:p-8" data-animate>
+        <p class="eyebrow">Send a Message</p>
+        <h2 class="section-title mt-2">We'd love to hear from you</h2>
+        <p class="mt-3 text-ink-700 leading-relaxed">
+          Fill in the form below and a member of our team will get back to you as soon as possible,
+          in shaa Allah.
+        </p>
+
+        <form method="POST" action="/contact" class="mt-6 space-y-5">
+          <div>
+            <label for="contact-name" class="field-label">Full Name</label>
+            <input type="text" id="contact-name" name="name" class="field-input" placeholder="Your full name" required />
+          </div>
+          <div>
+            <label for="contact-email" class="field-label">Email</label>
+            <input type="email" id="contact-email" name="email" class="field-input" placeholder="you@example.com" required />
+          </div>
+          <div>
+            <label for="contact-subject" class="field-label">Subject</label>
+            <select id="contact-subject" name="subject" class="field-select" required>
+              <option value="">Select a subject…</option>
+              <option value="general">General Inquiry</option>
+              <option value="membership">Membership</option>
+              <option value="partnerships">Partnerships &amp; Donations</option>
+              <option value="media">Media</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="contact-message" class="field-label">Message</label>
+            <textarea id="contact-message" name="message" class="field-textarea" placeholder="How can we help?" required></textarea>
+            <p class="field-hint">Please include as much detail as possible so we can respond appropriately.</p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            <i data-lucide="send" class="w-4 h-4" aria-hidden="true"></i> Send Message
+          </button>
+        </form>
+      </div>
+
+      <!-- Map placeholder + social -->
+      <div class="space-y-6" data-animate>
+        <div class="card overflow-hidden">
+          <div class="relative bg-forest-100 h-64 sm:h-72 flex items-center justify-center">
+            <div class="absolute inset-0 islamic-pattern opacity-60"></div>
+            <div class="relative z-10 text-center px-6">
+              <i data-lucide="map-pin" class="w-12 h-12 text-forest-700 mx-auto mb-3" aria-hidden="true"></i>
+              <p class="font-bold text-forest-900">GMSA UTAS</p>
+              <p class="mt-1 text-sm text-ink-700">
+                {{ org.address if org and org.address else 'Student Centre, Level 2, Room 204, UTAS Campus' }}
+              </p>
+            </div>
+          </div>
+          <div class="p-4 sm:p-5">
+            <p class="field-hint">
+              Drop by during office hours (Mon–Fri, 10am–4pm) or reach us online — we're always happy to chat.
+            </p>
+          </div>
+        </div>
+
+        <div class="card p-6 sm:p-8">
+          <p class="eyebrow">Follow Us</p>
+          <h3 class="font-bold text-lg text-forest-900 mt-2">Stay connected on social media</h3>
+          <div class="mt-5 flex flex-wrap gap-3">
+            {% if org and org.social %}
+              {% if org.social.get('instagram') %}
+              <a href="{{ org.social.instagram }}" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="Instagram">
+                {{ social_icons.instagram() }}
+              </a>
+              {% endif %}
+              {% if org.social.get('facebook') %}
+              <a href="{{ org.social.facebook }}" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="Facebook">
+                {{ social_icons.facebook() }}
+              </a>
+              {% endif %}
+              {% if org.social.get('twitter') %}
+              <a href="{{ org.social.twitter }}" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="Twitter / X">
+                {{ social_icons.twitter() }}
+              </a>
+              {% endif %}
+              {% if org.social.get('whatsapp') %}
+              <a href="{{ org.social.whatsapp }}" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="WhatsApp">
+                <i data-lucide="message-circle" class="w-5 h-5" aria-hidden="true"></i>
+              </a>
+              {% endif %}
+              {% if org.social.get('youtube') %}
+              <a href="{{ org.social.youtube }}" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="YouTube">
+                {{ social_icons.youtube() }}
+              </a>
+              {% endif %}
+            {% else %}
+              <a href="#" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="Instagram">
+                {{ social_icons.instagram() }}
+              </a>
+              <a href="#" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="Facebook">
+                {{ social_icons.facebook() }}
+              </a>
+              <a href="#" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="WhatsApp">
+                <i data-lucide="message-circle" class="w-5 h-5" aria-hidden="true"></i>
+              </a>
+              <a href="#" class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors" aria-label="YouTube">
+                {{ social_icons.youtube() }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ FAQ ACCORDION ============================ -->
+  <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <div class="max-w-2xl mb-10" data-animate>
+      <p class="eyebrow">Need Help?</p>
+      <h2 class="section-title mt-3">Frequently asked questions</h2>
+    </div>
+
+    <div class="space-y-3" x-data="{ open: null }">
+      <div class="card overflow-hidden" data-animate>
+        <button @click="open = open === 1 ? null : 1" class="w-full flex items-center justify-between gap-4 p-5 text-left" :aria-expanded="(open === 1).toString()">
+          <span class="font-bold text-forest-900">How do I become a member?</span>
+          <i data-lucide="chevron-down" class="w-5 h-5 text-forest-600 shrink-0 transition-transform" :class="open === 1 ? 'rotate-180' : ''" aria-hidden="true"></i>
+        </button>
+        <div x-show="open === 1" x-transition x-cloak class="px-5 pb-5 text-sm text-ink-700 leading-relaxed">
+          Simply fill out the registration form on our <a href="/register" class="text-forest-700 font-semibold hover:underline">Become a Member</a> page. You'll get instant access to the member portal once your details are confirmed.
+        </div>
+      </div>
+
+      <div class="card overflow-hidden" data-animate>
+        <button @click="open = open === 2 ? null : 2" class="w-full flex items-center justify-between gap-4 p-5 text-left" :aria-expanded="(open === 2).toString()">
+          <span class="font-bold text-forest-900">How are dues used?</span>
+          <i data-lucide="chevron-down" class="w-5 h-5 text-forest-600 shrink-0 transition-transform" :class="open === 2 ? 'rotate-180' : ''" aria-hidden="true"></i>
+        </button>
+        <div x-show="open === 2" x-transition x-cloak class="px-5 pb-5 text-sm text-ink-700 leading-relaxed">
+          Dues fund weekly programs, welfare support for members in need, facility upkeep, and community events. A full breakdown is published each semester on our <a href="/blog" class="text-forest-700 font-semibold hover:underline">blog</a>.
+        </div>
+      </div>
+
+      <div class="card overflow-hidden" data-animate>
+        <button @click="open = open === 3 ? null : 3" class="w-full flex items-center justify-between gap-4 p-5 text-left" :aria-expanded="(open === 3).toString()">
+          <span class="font-bold text-forest-900">Can non-Muslims attend events?</span>
+          <i data-lucide="chevron-down" class="w-5 h-5 text-forest-600 shrink-0 transition-transform" :class="open === 3 ? 'rotate-180' : ''" aria-hidden="true"></i>
+        </button>
+        <div x-show="open === 3" x-transition x-cloak class="px-5 pb-5 text-sm text-ink-700 leading-relaxed">
+          Absolutely. Most of our events — including talks, social activities and Islamic Awareness Week — are open to all students and staff, regardless of faith. Check each event's details on our <a href="/events" class="text-forest-700 font-semibold hover:underline">Events</a> page.
+        </div>
+      </div>
+
+      <div class="card overflow-hidden" data-animate>
+        <button @click="open = open === 4 ? null : 4" class="w-full flex items-center justify-between gap-4 p-5 text-left" :aria-expanded="(open === 4).toString()">
+          <span class="font-bold text-forest-900">How can I volunteer?</span>
+          <i data-lucide="chevron-down" class="w-5 h-5 text-forest-600 shrink-0 transition-transform" :class="open === 4 ? 'rotate-180' : ''" aria-hidden="true"></i>
+        </button>
+        <div x-show="open === 4" x-transition x-cloak class="px-5 pb-5 text-sm text-ink-700 leading-relaxed">
+          We're always looking for volunteers for events, da'wah outreach and welfare drives. Send us a message using the contact form above, or speak to any executive at our next event.
+        </div>
+      </div>
+    </div>
+  </section>
+
+{% endblock %}

@@ -1,0 +1,14 @@
+<div class="table-card-foot" x-show="total > pageSize">
+  <p class="foot-info">Showing <b x-text="rangeStart"></b>&ndash;<b x-text="rangeEnd"></b> of <b x-text="total"></b></p>
+  <div class="pager">
+    <button type="button" @click="prev()" :disabled="page === 0" aria-label="Previous page">
+      <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+    </button>
+    <template x-for="p in pageCount" :key="p">
+      <button type="button" @click="goto(p - 1)" :class="{ active: page === p - 1 }" x-text="p"></button>
+    </template>
+    <button type="button" @click="next()" :disabled="page === pageCount - 1" aria-label="Next page">
+      <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,51 @@
+{# Shared header + sub-nav for the election admin pages (Settings / Ballot / Voters / Results).
+   Expects: election (with display_status set), admin, active_tab.
+   voters_count / voted_count are optional — shown on the Voters tab label when provided. #}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+  <div>
+    <a href="/admin/elections" class="text-sm font-semibold text-forest-700 hover:text-forest-900 inline-flex items-center gap-1">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> All Elections
+    </a>
+    <h2 class="text-2xl font-extrabold text-forest-900 mt-2">{{ election.title }}</h2>
+  </div>
+  <div class="flex items-center gap-3">
+    {% if election.is_test %}
+    <span class="badge badge-gold" title="Test/sandbox election — exempt from the one-per-year limit and freely deletable">TEST</span>
+    {% endif %}
+    <span class="badge {% if election.display_status == 'open' %}badge-green{% elif election.display_status == 'paused' %}badge-red{% elif election.display_status == 'closed' %}badge-gray{% else %}badge-gold{% endif %}">
+      {{ election.display_status }}
+    </span>
+    {% if election.display_status == 'open' %}
+    <form method="post" action="/admin/elections/{{ election.id }}/pause">
+      <input type="hidden" name="next" value="{{ request.url.path }}" />
+      <button type="submit" class="btn btn-outline btn-sm">
+        <i data-lucide="pause" class="w-3.5 h-3.5"></i> Pause Voting
+      </button>
+    </form>
+    {% elif election.display_status == 'paused' %}
+    <form method="post" action="/admin/elections/{{ election.id }}/resume">
+      <input type="hidden" name="next" value="{{ request.url.path }}" />
+      <button type="submit" class="btn btn-outline btn-sm">
+        <i data-lucide="play" class="w-3.5 h-3.5"></i> Resume Voting
+      </button>
+    </form>
+    {% endif %}
+    {% if admin.role == 'superadmin' and (election.status == 'draft' or election.is_test) %}
+    <form method="post" action="/admin/elections/{{ election.id }}/delete"
+          onsubmit="return confirm('Permanently delete this {% if election.is_test %}test {% endif %}election, its positions, candidates{% if election.is_test %}, voters and votes{% endif %}? This cannot be undone.')">
+      <button type="submit" class="btn btn-outline btn-sm text-red-700 border-red-200 hover:bg-red-50">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Delete Election
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="flex items-center gap-1 border-b border-cream-300 mb-6 overflow-x-auto">
+  <a href="/admin/elections/{{ election.id }}" class="tab-btn {% if active_tab == 'settings' %}active{% endif %}">Settings</a>
+  <a href="/admin/elections/{{ election.id }}/ballot" class="tab-btn {% if active_tab == 'ballot' %}active{% endif %}">Positions & Candidates</a>
+  <a href="/admin/elections/{{ election.id }}/voters" class="tab-btn {% if active_tab == 'voters' %}active{% endif %}">
+    Voters{% if voters_count is defined %} ({{ voted_count }}/{{ voters_count }}){% endif %}
+  </a>
+  <a href="/admin/elections/{{ election.id }}/results" class="tab-btn {% if active_tab == 'results' %}active{% endif %}">Results</a>
+</div>

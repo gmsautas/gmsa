@@ -1,0 +1,123 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Results — {{ election.title }}{% endblock %}
+{% block page_title %}Results — {{ election.title }}{% endblock %}
+
+{% block content %}
+{% include "admin/_election_tabs.html" %}
+
+<div class="mb-6">
+  <h2 class="text-2xl font-extrabold text-forest-900">Results</h2>
+  <p class="text-sm text-ink-500 mt-1">
+    Aggregate tallies only — nullified votes are excluded, and individual ballots are never shown here or anywhere else.
+  </p>
+</div>
+
+<!-- Turnout -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="stat-tile">
+    <p class="stat-label">Registered Voters</p>
+    <p class="stat-value mt-2">{{ voters_count }}</p>
+  </div>
+  <div class="stat-tile">
+    <p class="stat-label">Votes Cast</p>
+    <p class="stat-value mt-2">{{ voted_count }}</p>
+  </div>
+  <div class="stat-tile col-span-2 lg:col-span-2">
+    <p class="stat-label">Turnout</p>
+    <p class="stat-value mt-2">{{ turnout_percent }}%</p>
+    <div class="progress-track mt-2">
+      <div class="progress-fill" style="width:{{ turnout_percent }}%"></div>
+    </div>
+  </div>
+</div>
+
+{% set label = "Winner" if election.display_status == "closed" else "Leading" %}
+
+{% if results %}
+<div class="space-y-6">
+  {% for r in results %}
+  <div class="card p-6">
+    <h3 class="font-bold text-forest-900 text-lg mb-1">{{ r.position.title }}</h3>
+
+    {% if not r.contested %}
+    <!-- Uncontested: yes/no -->
+    <p class="text-sm text-ink-500 mb-4">
+      Uncontested — {{ r.candidate.name }} needed a majority Yes to be {{ "elected" if election.display_status == "closed" else "confirmed" }}.
+    </p>
+    <div class="flex items-center gap-3 mb-4">
+      {% if r.candidate.photo_url %}
+      <img src="{{ r.candidate.photo_url }}" alt="{{ r.candidate.name }}" class="w-10 h-10 rounded-full object-cover shrink-0" />
+      {% else %}
+      <div class="avatar w-10 h-10 text-sm shrink-0">{{ r.candidate.name[:2] | upper }}</div>
+      {% endif %}
+      <p class="font-semibold text-forest-900">{{ r.candidate.name }}</p>
+      {% if r.total_votes > 0 %}
+        {% if r.yes_votes > r.no_votes %}
+        <span class="badge badge-green">{{ "Elected" if election.display_status == "closed" else "Passing" }}</span>
+        {% elif r.no_votes > r.yes_votes %}
+        <span class="badge badge-red">{{ "Rejected" if election.display_status == "closed" else "Failing" }}</span>
+        {% else %}
+        <span class="badge badge-gray">Tied</span>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="space-y-3">
+      <div>
+        <div class="flex items-center justify-between text-sm mb-1.5">
+          <span class="font-semibold text-forest-900">Yes</span>
+          <span class="text-ink-500">{{ r.yes_votes }} {{ "vote" if r.yes_votes == 1 else "votes" }}</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:{{ (r.yes_votes / r.total_votes * 100) if r.total_votes else 0 }}%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center justify-between text-sm mb-1.5">
+          <span class="font-semibold text-forest-900">No</span>
+          <span class="text-ink-500">{{ r.no_votes }} {{ "vote" if r.no_votes == 1 else "votes" }}</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:{{ (r.no_votes / r.total_votes * 100) if r.total_votes else 0 }}%"></div>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Contested: ranked candidates -->
+    <p class="text-sm text-ink-500 mb-4">{{ r.total_votes }} {{ "vote" if r.total_votes == 1 else "votes" }} cast for this position.</p>
+    <div class="space-y-3">
+      {% for c in r.candidates %}
+      <div>
+        <div class="flex items-center gap-3 mb-1.5">
+          {% if c.candidate.photo_url %}
+          <img src="{{ c.candidate.photo_url }}" alt="{{ c.candidate.name }}" class="w-8 h-8 rounded-full object-cover shrink-0" />
+          {% else %}
+          <div class="avatar w-8 h-8 text-xs shrink-0">{{ c.candidate.name[:2] | upper }}</div>
+          {% endif %}
+          <span class="font-semibold text-forest-900 text-sm">{{ c.candidate.name }}</span>
+          {% if c.votes > 0 and c.votes == r.candidates[0].votes %}
+          <span class="badge badge-green">{{ label }}{{ " (tied)" if r.candidates[1] is defined and r.candidates[1].votes == c.votes else "" }}</span>
+          {% endif %}
+          <span class="ml-auto text-sm text-ink-500">{{ c.votes }} ({{ c.percent }}%)</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:{{ c.percent }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card p-12 text-center">
+  <p class="text-sm text-ink-500">No positions have been configured for this election yet.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Member Login — GMSA UTAS{% endblock %}
+
+{% block meta %}<meta name="description" content="Sign in to the GMSA UTAS member portal to manage your dues, RSVPs and profile." />{% endblock %}
+
+{% block nav %}
+<header class="py-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <a href="/" class="inline-flex items-center gap-2.5">
+      <img src="/static/img/logo.png" alt="GMSA UTAS" class="h-9 w-9 object-contain" />
+      <span class="font-extrabold text-lg text-forest-900 tracking-tight">GMSA <span class="text-gold-600">UTAS</span></span>
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background-color: #F8F3E8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex items-center justify-center px-4 py-8 min-h-[calc(100vh-10rem)]">
+  <div class="card w-full max-w-md p-8" data-animate>
+    <p class="eyebrow text-center">Member Portal</p>
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-forest-900 text-center mt-2">Welcome back</h1>
+    <p class="text-center text-ink-500 mt-2 text-sm">Sign in to manage your dues, RSVPs and profile.</p>
+
+    {% if registered %}
+    <div class="mt-6 rounded-lg bg-forest-50 border border-forest-200 px-4 py-3 text-sm text-forest-800 font-medium text-center" role="alert">
+      Account created! Please sign in.
+    </div>
+    {% endif %}
+
+    {% if reset %}
+    <div class="mt-6 rounded-lg bg-forest-50 border border-forest-200 px-4 py-3 text-sm text-forest-800 font-medium text-center" role="alert">
+      Password reset — please sign in with your new password.
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium text-center" role="alert">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/login" method="POST" class="mt-8 space-y-5">
+      {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+      <div>
+        <label for="login-email" class="field-label">Email Address</label>
+        <input id="login-email" name="email" type="email" class="field-input" placeholder="you@example.com" required />
+      </div>
+      <div>
+        <label for="login-password" class="field-label">Password</label>
+        <input id="login-password" name="password" type="password" class="field-input" placeholder="••••••••" required />
+      </div>
+      <div class="flex items-center justify-between">
+        <label class="flex items-center gap-2 text-sm text-ink-700">
+          <input type="checkbox" class="field-check" name="remember" />
+          Remember me
+        </label>
+        <a href="/forgot-password" class="text-sm font-semibold text-forest-700 hover:text-forest-900">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">
+        Sign In
+      </button>
+    </form>
+
+    <p class="text-center text-sm text-ink-500 mt-6">
+      Don't have an account?
+      <a href="/register" class="font-semibold text-forest-700 hover:text-forest-900">Create one</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+<footer class="py-6 text-center text-sm text-ink-500">
+  &copy; {{ current_year() }} GMSA UTAS. All rights reserved.
+</footer>
+{% endblock %}

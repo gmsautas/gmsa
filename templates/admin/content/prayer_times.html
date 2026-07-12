@@ -1,0 +1,74 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Content — Prayer Times{% endblock %}
+{% block page_title %}Content{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h2 class="text-2xl font-extrabold text-forest-900">Prayer Times</h2>
+  <p class="text-sm text-ink-500 mt-1">
+    Shown on the home page's prayer times card. Entered by hand — update as often as needed to keep
+    them accurate (times aren't pulled from any external source).
+  </p>
+</div>
+
+{% if saved %}
+<div class="mb-6 rounded-lg bg-forest-50 border border-forest-200 px-4 py-3 text-sm text-forest-800 font-medium" role="alert">
+  Prayer times saved.
+</div>
+{% endif %}
+
+<div class="card p-6 max-w-2xl">
+  <form method="post" action="/admin/content/prayer-times" class="space-y-5">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div>
+        <label for="pt-fajr" class="field-label">Fajr</label>
+        <input id="pt-fajr" name="fajr" type="time" class="field-input"
+               value="{{ prayer_times.fajr.strftime('%H:%M') if prayer_times.fajr else '' }}" />
+      </div>
+      <div>
+        <label for="pt-sunrise" class="field-label">Sunrise</label>
+        <input id="pt-sunrise" name="sunrise" type="time" class="field-input"
+               value="{{ prayer_times.sunrise.strftime('%H:%M') if prayer_times.sunrise else '' }}" />
+      </div>
+      <div>
+        <label for="pt-dhuhr" class="field-label">Dhuhr</label>
+        <input id="pt-dhuhr" name="dhuhr" type="time" class="field-input"
+               value="{{ prayer_times.dhuhr.strftime('%H:%M') if prayer_times.dhuhr else '' }}" />
+      </div>
+      <div>
+        <label for="pt-asr" class="field-label">Asr</label>
+        <input id="pt-asr" name="asr" type="time" class="field-input"
+               value="{{ prayer_times.asr.strftime('%H:%M') if prayer_times.asr else '' }}" />
+      </div>
+      <div>
+        <label for="pt-maghrib" class="field-label">Maghrib</label>
+        <input id="pt-maghrib" name="maghrib" type="time" class="field-input"
+               value="{{ prayer_times.maghrib.strftime('%H:%M') if prayer_times.maghrib else '' }}" />
+      </div>
+      <div>
+        <label for="pt-isha" class="field-label">Isha</label>
+        <input id="pt-isha" name="isha" type="time" class="field-input"
+               value="{{ prayer_times.isha.strftime('%H:%M') if prayer_times.isha else '' }}" />
+      </div>
+    </div>
+
+    <div>
+      <label for="pt-location" class="field-label">Location Label <span class="text-ink-400 font-normal">(optional)</span></label>
+      <input id="pt-location" name="location_label" type="text" class="field-input"
+             placeholder="e.g. UTAS Campus, Hobart"
+             value="{{ prayer_times.location_label or '' }}" />
+    </div>
+
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="save" class="w-4 h-4"></i> Save Prayer Times
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

@@ -1,0 +1,333 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Leadership{% endblock %}
+{% block page_title %}Leadership Management{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Leadership Management</h2>
+    <p class="text-sm text-ink-500 mt-1">Manage executive boards, committees and members across academic terms.</p>
+  </div>
+  <div x-data="{ open: false }">
+    <button @click="open = true" class="btn btn-secondary">
+      <i data-lucide="plus" class="w-4 h-4"></i> New Board
+    </button>
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+      <div class="card w-full max-w-sm p-6" @click.stop>
+        <h3 class="font-bold text-lg text-forest-900 mb-4">Create New Board</h3>
+        <form method="post" action="/admin/leadership/boards" class="space-y-4">
+          <div>
+            <label for="board-term" class="field-label">Term</label>
+            <input id="board-term" name="term" type="text" class="field-input"
+                   placeholder="e.g. 2025–2026" required />
+            <p class="field-hint">Use the academic year format, e.g. 2025–2026.</p>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
+            <input type="checkbox" name="is_current" value="true" class="field-check" />
+            Set as current board
+          </label>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Board</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% macro member_form(action) %}
+<form method="post" action="{{ action }}" class="space-y-4">
+  <div>
+    <label class="field-label">Name</label>
+    <input name="name" type="text" class="field-input" placeholder="e.g. Yusuf Mensah" required />
+  </div>
+  <div>
+    <label class="field-label">Role / Title</label>
+    <input name="role" type="text" class="field-input" placeholder="e.g. President" required />
+  </div>
+  <div>
+    <label class="field-label">Phone <span class="text-ink-400 font-normal">(optional)</span></label>
+    <input name="phone" type="text" class="field-input" placeholder="+233 24 000 0000" />
+  </div>
+  <div>
+    <label class="field-label">Photo URL <span class="text-ink-400 font-normal">(optional)</span></label>
+    <input name="photo_url" type="url" class="field-input" placeholder="https://... — leave blank to show initials" />
+  </div>
+  <div>
+    <label class="field-label">Order <span class="text-ink-400 font-normal">(optional)</span></label>
+    <input name="order_index" type="number" min="0" class="field-input" value="0" />
+  </div>
+  <div class="flex justify-end gap-3 mt-6">
+    <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+    <button type="submit" class="btn btn-primary">Save Member</button>
+  </div>
+</form>
+{% endmacro %}
+
+{% macro committee_member_row(m) %}
+<div class="flex items-center justify-between gap-3 py-2 border-b border-cream-200 last:border-0">
+  <div class="min-w-0">
+    <p class="font-semibold text-forest-900 text-sm truncate">{{ m.name }}</p>
+    <p class="text-xs text-forest-700">{{ m.role }}{% if m.phone %} · {{ m.phone }}{% endif %}</p>
+  </div>
+  <form method="post" action="/admin/leadership/committee-members/{{ m.id }}/delete">
+    <button type="submit" class="text-ink-400 hover:text-red-600" aria-label="Remove {{ m.name }}">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+  </form>
+</div>
+{% endmacro %}
+
+{% macro committees_block(board) %}
+<div class="mt-6 pt-6 border-t border-cream-300">
+  <div class="flex items-center justify-between gap-3 mb-4">
+    <h4 class="font-bold text-forest-900 flex items-center gap-2">
+      <i data-lucide="users-round" class="w-4 h-4 text-forest-600"></i> Committees
+    </h4>
+    <div x-data="{ open: false }">
+      <button @click="open = true" class="btn btn-outline btn-sm">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Committee
+      </button>
+      <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+        <div class="card w-full max-w-sm p-6" @click.stop>
+          <h3 class="font-bold text-lg text-forest-900 mb-4">New Committee</h3>
+          <form method="post" action="/admin/leadership/boards/{{ board.id }}/committees" class="space-y-4">
+            <div>
+              <label class="field-label">Committee Name</label>
+              <input name="name" type="text" class="field-input" placeholder="e.g. Publicity & IT Committee" required />
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+              <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if board.committees %}
+  <div class="space-y-3">
+    {% for c in board.committees | sort(attribute='order_index') %}
+    <details class="card p-4">
+      <summary class="flex items-center justify-between gap-3 cursor-pointer list-none">
+        <span class="font-semibold text-forest-900 flex items-center gap-2">
+          <i data-lucide="chevron-down" class="chevron w-4 h-4 text-forest-600"></i>
+          {{ c.name }}
+          <span class="text-xs text-ink-500">({{ c.members | length }})</span>
+        </span>
+        <form method="post" action="/admin/leadership/committees/{{ c.id }}/delete">
+          <button type="submit" class="text-ink-400 hover:text-red-600" aria-label="Delete {{ c.name }}">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </summary>
+      <div class="mt-3 pt-3 border-t border-cream-200">
+        {% if c.members %}
+          {% for m in c.members | sort(attribute='order_index') %}
+            {{ committee_member_row(m) }}
+          {% endfor %}
+        {% else %}
+          <p class="text-sm text-ink-500">No members in this committee yet.</p>
+        {% endif %}
+        <div class="mt-3" x-data="{ open: false }">
+          <button type="button" @click="open = true" class="btn btn-outline btn-sm">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Member
+          </button>
+          <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+            <div class="card w-full max-w-sm p-6" @click.stop>
+              <h3 class="font-bold text-lg text-forest-900 mb-4">Add Committee Member</h3>
+              <form method="post" action="/admin/leadership/committees/{{ c.id }}/members" class="space-y-4">
+                <div>
+                  <label class="field-label">Name</label>
+                  <input name="name" type="text" class="field-input" required />
+                </div>
+                <div>
+                  <label class="field-label">Role / Title</label>
+                  <input name="role" type="text" class="field-input" placeholder="e.g. Committee Lead" required />
+                </div>
+                <div>
+                  <label class="field-label">Phone <span class="text-ink-400 font-normal">(optional)</span></label>
+                  <input name="phone" type="text" class="field-input" />
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                  <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-sm text-ink-500">No committees added for this board yet.</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% if boards %}
+  {% set current_board = boards | selectattr('is_current', 'equalto', true) | first | default(none) %}
+
+  {% if current_board %}
+  <!-- Current Board -->
+  <div class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-forest-900 text-xl flex items-center gap-2">
+        <i data-lucide="award" class="w-5 h-5 text-gold-500"></i>
+        Current Board — {{ current_board.term }}
+        <span class="badge badge-green">Active</span>
+      </h3>
+      <div x-data="{ open: false }">
+        <button @click="open = true" class="btn btn-outline btn-sm">
+          <i data-lucide="user-plus" class="w-3.5 h-3.5" aria-hidden="true"></i> Add Member
+        </button>
+        <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+          <div class="card w-full max-w-sm p-6" @click.stop>
+            <h3 class="font-bold text-lg text-forest-900 mb-4">Add Board Member</h3>
+            {{ member_form("/admin/leadership/boards/" ~ current_board.id ~ "/members") }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% if current_board.members %}
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for m in current_board.members | sort(attribute='order_index') %}
+      <div class="card card-hover p-5">
+        <div class="flex items-center gap-3">
+          {% if m.photo_url %}
+          <img src="{{ m.photo_url }}" alt="{{ m.name }}"
+               class="w-12 h-12 rounded-full object-cover shrink-0" />
+          {% else %}
+          <div class="avatar w-12 h-12 text-base shrink-0">{{ m.initials }}</div>
+          {% endif %}
+          <div class="min-w-0">
+            <p class="font-bold text-forest-900 leading-snug truncate">{{ m.name }}</p>
+            <p class="text-sm text-forest-700 font-semibold">{{ m.role }}</p>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-cream-300 text-sm text-ink-700 space-y-1 flex items-center justify-between">
+          <p class="flex items-center gap-1.5">
+            <i data-lucide="phone" class="w-3.5 h-3.5 text-ink-500"></i>
+            {{ m.phone or '—' }}
+          </p>
+          <form method="post" action="/admin/leadership/members/{{ m.id }}/delete">
+            <button type="submit" class="text-ink-400 hover:text-red-600" aria-label="Remove {{ m.name }}">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card p-8 text-center">
+      <p class="text-sm text-ink-500">No members added to this board yet.</p>
+    </div>
+    {% endif %}
+
+    {{ committees_block(current_board) }}
+  </div>
+  {% endif %}
+
+  <!-- All Boards List -->
+  <div>
+    <h3 class="font-bold text-forest-900 text-lg mb-4">All Boards</h3>
+    <div class="space-y-4">
+      {% for board in boards %}
+      <div class="card p-5" x-data="{ expanded: {{ 'true' if board.is_current else 'false' }} }">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <button @click="expanded = !expanded"
+                    class="text-forest-700 hover:text-forest-900 transition-transform duration-200"
+                    :class="expanded ? 'rotate-90' : ''"
+                    aria-label="Toggle {{ board.term }}">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+            <div class="min-w-0">
+              <p class="font-bold text-forest-900">{{ board.term }}</p>
+              <p class="text-sm text-ink-500">{{ board.members | length }} member{{ 's' if board.members | length != 1 else '' }} · {{ board.committees | length }} committee{{ 's' if board.committees | length != 1 else '' }}</p>
+            </div>
+            {% if board.is_current %}
+            <span class="badge badge-green shrink-0">Current</span>
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            {% if not board.is_current %}
+            <form method="post" action="/admin/leadership/boards/{{ board.id }}/set-current">
+              <button type="submit" class="btn btn-outline btn-sm">
+                <i data-lucide="star" class="w-3.5 h-3.5"></i> Set Current
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+
+        <div x-show="expanded" x-cloak class="mt-4 pt-4 border-t border-cream-300">
+          <div class="flex items-center justify-end mb-3" x-data="{ open: false }">
+            <button @click="open = true" class="btn btn-outline btn-sm">
+              <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add Member
+            </button>
+            <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+              <div class="card w-full max-w-sm p-6" @click.stop>
+                <h3 class="font-bold text-lg text-forest-900 mb-4">Add Board Member</h3>
+                {{ member_form("/admin/leadership/boards/" ~ board.id ~ "/members") }}
+              </div>
+            </div>
+          </div>
+          {% if board.members %}
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for m in board.members | sort(attribute='order_index') %}
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-cream-50 border border-cream-200">
+              {% if m.photo_url %}
+              <img src="{{ m.photo_url }}" alt="{{ m.name }}"
+                   class="w-10 h-10 rounded-full object-cover shrink-0" />
+              {% else %}
+              <div class="avatar w-10 h-10 text-sm shrink-0">{{ m.initials }}</div>
+              {% endif %}
+              <div class="min-w-0 flex-1">
+                <p class="font-semibold text-forest-900 text-sm leading-snug truncate">{{ m.name }}</p>
+                <p class="text-xs text-forest-700">{{ m.role }}</p>
+                <p class="text-xs text-ink-500 truncate">{{ m.phone or '' }}</p>
+              </div>
+              <form method="post" action="/admin/leadership/members/{{ m.id }}/delete">
+                <button type="submit" class="text-ink-400 hover:text-red-600" aria-label="Remove {{ m.name }}">
+                  <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-sm text-ink-500">No members in this board.</p>
+          {% endif %}
+
+          {{ committees_block(board) }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+{% else %}
+<div class="card p-12 text-center">
+  <i data-lucide="award" class="w-12 h-12 text-forest-300 mx-auto mb-3"></i>
+  <p class="font-semibold text-forest-900 mb-1">No leadership boards yet</p>
+  <p class="text-sm text-ink-500">Create your first board using the "New Board" button above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

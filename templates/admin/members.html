@@ -1,0 +1,294 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Members{% endblock %}
+{% block page_title %}Members{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Members</h2>
+    <p class="text-sm text-ink-500 mt-1">Manage GMSA UTAS membership records, dues status and roles.</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <a href="/admin/members/import" class="btn btn-outline btn-sm">
+      <i data-lucide="upload" class="w-3.5 h-3.5"></i> Bulk Upload
+    </a>
+    <a href="/admin/members/new" class="btn btn-primary btn-sm">
+      <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add Member
+    </a>
+  </div>
+</div>
+
+<!-- Stat tiles -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Total Members</p>
+      <i data-lucide="users" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ total_count }}</p>
+    <p class="field-hint mt-1">All registered records</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Active Members</p>
+      <i data-lucide="user-check" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ active_count }}</p>
+    <p class="field-hint mt-1">Currently active accounts</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Pending / Unpaid Dues</p>
+      <i data-lucide="circle-dollar-sign" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ dues_unpaid }}</p>
+    <p class="field-hint mt-1">Need follow-up this semester</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Graduating This Year</p>
+      <i data-lucide="graduation-cap" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ graduating_count }}</p>
+    <p class="field-hint mt-1">Class of {{ current_year }}</p>
+  </div>
+</div>
+
+<!-- Filter toolbar -->
+<div class="card p-4 sm:p-6">
+  <form method="get" action="/admin/members" class="flex flex-wrap items-center gap-3 mb-5">
+    <div class="relative flex-1 min-w-[200px]">
+      <i data-lucide="search" class="w-4 h-4 text-ink-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+      <label for="member-search" class="sr-only">Search members</label>
+      <input type="search" id="member-search" name="q" value="{{ q }}" class="field-input pl-9"
+             placeholder="Search by name or email&hellip;" />
+    </div>
+    <div class="min-w-[160px]">
+      <label for="role-filter" class="sr-only">Filter by role</label>
+      <select id="role-filter" name="role" class="field-select" onchange="this.form.submit()">
+        <option value="">All Roles</option>
+        <option value="member" {% if role_filter == 'member' %}selected{% endif %}>Member</option>
+        <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Admin</option>
+        <option value="superadmin" {% if role_filter == 'superadmin' %}selected{% endif %}>Super Admin</option>
+      </select>
+    </div>
+    <div class="min-w-[160px]">
+      <label for="status-filter" class="sr-only">Filter by status</label>
+      <select id="status-filter" name="status" class="field-select" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline"><i data-lucide="search" class="w-4 h-4"></i> Search</button>
+    {% if q or role_filter or status_filter %}
+    <a href="/admin/members" class="btn btn-outline text-ink-500"><i data-lucide="x" class="w-4 h-4"></i> Clear</a>
+    {% endif %}
+  </form>
+
+  <div x-data="{ selected: [] }">
+  <form method="post" action="/admin/members/bulk" x-show="selected.length > 0" x-cloak
+        x-data="{ action: '' }"
+        @submit="if (action === 'delete' && prompt('Type DELETE to permanently delete ' + selected.length + ' member(s). This cannot be undone.') !== 'DELETE') $event.preventDefault()"
+        class="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-lg bg-forest-50 border border-forest-200">
+    <input type="hidden" name="user_ids" :value="selected.join(',')" />
+    <span class="text-sm font-semibold text-forest-900" x-text="selected.length + ' selected'"></span>
+    <select name="action" x-model="action" class="field-select w-auto" required>
+      <option value="">Bulk action&hellip;</option>
+      <option value="activate">Set Active</option>
+      <option value="deactivate">Set Inactive</option>
+      {% if admin.role == 'superadmin' %}
+      <option value="role_member">Set Role: Member</option>
+      <option value="role_admin">Set Role: Admin</option>
+      <option value="delete">Delete Selected</option>
+      {% endif %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    <button type="button" @click="selected = []" class="btn btn-outline btn-sm">Clear Selection</button>
+  </form>
+
+  <div class="table-card" x-data="tablePager({{ members | length }}, 10)">
+  <div class="table-scroll">
+    <table class="table-base table-collapse">
+      <thead>
+        <tr>
+          <th class="w-8">
+            <input type="checkbox" class="field-check"
+                   :checked="selected.length > 0 && selected.length === {{ members | length }}"
+                   @change="selected = $event.target.checked ? [{{ members | map(attribute='id') | join(',') }}] : []" />
+          </th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Program</th>
+          <th>Grad Year</th>
+          <th>Student ID</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in members %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td data-label="Select">
+            <input type="checkbox" class="field-check"
+                   :checked="selected.includes({{ m.id }})"
+                   @change="$event.target.checked ? selected.push({{ m.id }}) : selected = selected.filter(id => id !== {{ m.id }})" />
+          </td>
+          <td data-label="Name" class="font-semibold text-forest-900 whitespace-nowrap">
+            <a href="/admin/members/{{ m.id }}" class="hover:text-forest-700">{{ m.name }}</a>
+          </td>
+          <td data-label="Email" class="text-ink-500">{{ m.email }}</td>
+          <td data-label="Phone" class="whitespace-nowrap">{{ m.phone or '—' }}</td>
+          <td data-label="Program">{{ m.program or '—' }}</td>
+          <td data-label="Grad Year">{{ grad_years[m.id] or '—' }}</td>
+          <td data-label="Student ID">{{ m.student_id or '—' }}</td>
+          <td data-label="Role">
+            <span class="badge {% if m.role == 'superadmin' %}badge-gold{% elif m.role == 'admin' %}badge-green{% else %}badge-gray{% endif %}">
+              {{ m.role }}
+            </span>
+          </td>
+          <td data-label="Status">
+            <span class="badge {% if m.status == 'active' %}badge-green{% else %}badge-gray{% endif %}">
+              {{ m.status }}
+            </span>
+          </td>
+          <td data-label="Actions" class="text-right whitespace-nowrap" x-data="{ editOpen: false, assignOpen: false }">
+            <a href="/admin/members/{{ m.id }}" class="btn btn-outline btn-sm" aria-label="View {{ m.name }}">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+            </a>
+            <button type="button" @click="editOpen = !editOpen" class="btn btn-outline btn-sm ml-1" aria-label="Edit {{ m.name }}">
+              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+            </button>
+            <button type="button" @click="assignOpen = !assignOpen" class="btn btn-outline btn-sm ml-1" aria-label="Assign role for {{ m.name }}" title="Assign executive/committee role">
+              <i data-lucide="award" class="w-3.5 h-3.5"></i>
+            </button>
+            <div x-show="editOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="editOpen = false">
+              <div class="card w-full max-w-sm p-6" @click.stop>
+                <h3 class="font-bold text-lg text-forest-900 mb-1">Update Member</h3>
+                <p class="text-sm text-ink-500 mb-4">{{ m.name }}</p>
+                <form method="post" action="/admin/members/{{ m.id }}" class="space-y-4">
+                  <div>
+                    <label class="field-label" for="role-{{ m.id }}">Role</label>
+                    {% if admin.role == 'superadmin' %}
+                    <select id="role-{{ m.id }}" name="role" class="field-select">
+                      <option value="">— no change —</option>
+                      <option value="member" {% if m.role == 'member' %}selected{% endif %}>Member</option>
+                      <option value="admin" {% if m.role == 'admin' %}selected{% endif %}>Admin</option>
+                      <option value="superadmin" {% if m.role == 'superadmin' %}selected{% endif %}>Super Admin</option>
+                    </select>
+                    {% else %}
+                    <p class="field-input bg-cream-100 text-ink-500">{{ m.role }} <span class="text-xs">(super admin only)</span></p>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <label class="field-label" for="status-{{ m.id }}">Account Status</label>
+                    <select id="status-{{ m.id }}" name="status" class="field-select">
+                      <option value="">— no change —</option>
+                      <option value="active" {% if m.status == 'active' %}selected{% endif %}>Active</option>
+                      <option value="inactive" {% if m.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <input id="title-{{ m.id }}" name="title" type="text" class="field-input" value="{{ m.title or '' }}" placeholder="e.g. President" />
+                  </div>
+                  <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="editOpen = false" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <div x-show="assignOpen" x-cloak x-data="{ mode: 'board' }" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="assignOpen = false">
+              <div class="card w-full max-w-sm p-6" @click.stop>
+                <h3 class="font-bold text-lg text-forest-900 mb-1">Assign Role</h3>
+                <p class="text-sm text-ink-500 mb-4">{{ m.name }}</p>
+                <div class="flex gap-2 mb-4">
+                  <button type="button" @click="mode = 'board'" class="btn btn-sm" :class="mode === 'board' ? 'btn-primary' : 'btn-outline'">Executive Board</button>
+                  <button type="button" @click="mode = 'committee'" class="btn btn-sm" :class="mode === 'committee' ? 'btn-primary' : 'btn-outline'">Committee</button>
+                </div>
+
+                <form x-show="mode === 'board'" method="post" class="space-y-4"
+                      onsubmit="this.action = this.querySelector('[name=board_id]').selectedOptions[0].dataset.action">
+                  <input type="hidden" name="user_id" value="{{ m.id }}" />
+                  {% if boards %}
+                  <div>
+                    <label class="field-label">Board</label>
+                    <select name="board_id" class="field-select" required>
+                      {% for b in boards %}
+                      <option value="{{ b.id }}" data-action="/admin/leadership/boards/{{ b.id }}/members">{{ b.term }}{% if b.is_current %} (current){% endif %}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">Title</label>
+                    <input name="role" type="text" class="field-input" placeholder="e.g. President" required />
+                  </div>
+                  <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="assignOpen = false" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign</button>
+                  </div>
+                  {% else %}
+                  <p class="text-sm text-ink-500">No executive boards exist yet <br>Create one from the <a href="/admin/leadership" class="font-semibold text-forest-700 hover:text-forest-900">Leadership page</a> first.</p>
+                  <div class="flex justify-end pt-2">
+                    <button type="button" @click="assignOpen = false" class="btn btn-outline">Close</button>
+                  </div>
+                  {% endif %}
+                </form>
+
+                <form x-show="mode === 'committee'" x-cloak method="post" class="space-y-4"
+                      onsubmit="this.action = this.querySelector('[name=committee_id]').selectedOptions[0].dataset.action">
+                  <input type="hidden" name="user_id" value="{{ m.id }}" />
+                  {% if committees %}
+                  <div>
+                    <label class="field-label">Committee</label>
+                    <select name="committee_id" class="field-select" required>
+                      {% for c in committees %}
+                      <option value="{{ c.id }}" data-action="/admin/leadership/committees/{{ c.id }}/members">{{ c.board_term }} — {{ c.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">Role</label>
+                    <input name="role" type="text" class="field-input" placeholder="e.g. Member" value="Member" required />
+                  </div>
+                  <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="assignOpen = false" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign</button>
+                  </div>
+                  {% else %}
+                  <p class="text-sm text-ink-500">No committees exist yet — create one from the <a href="/admin/leadership" class="font-semibold text-forest-700 hover:text-forest-900">Leadership page</a> first.</p>
+                  <div class="flex justify-end pt-2">
+                    <button type="button" @click="assignOpen = false" class="btn btn-outline">Close</button>
+                  </div>
+                  {% endif %}
+                </form>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="text-center text-ink-500 py-8">No members match your search/filters.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+  </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="GMSA UTAS logo">
+  <circle cx="32" cy="32" r="32" fill="#163B2B"/>
+  <circle cx="29" cy="33" r="17" fill="#D4AF37"/>
+  <circle cx="35.5" cy="29" r="14" fill="#163B2B"/>
+  <path d="M46 14 C46.8 18 48 19.2 52 20 C48 20.8 46.8 22 46 26 C45.2 22 44 20.8 40 20 C44 19.2 45.2 18 46 14 Z" fill="#D4AF37"/>
+</svg>

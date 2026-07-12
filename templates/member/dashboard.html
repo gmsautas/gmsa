@@ -1,0 +1,200 @@
+{% extends "member_base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Welcome banner -->
+<div class="islamic-pattern bg-forest-900 text-cream-50 rounded-2xl p-6 sm:p-8 mb-6" data-animate>
+  <p class="eyebrow text-gold-400">Assalamu alaikum</p>
+  <h2 class="mt-2 text-2xl sm:text-3xl font-extrabold">Welcome back, {{ user.name.split(' ')[0] }}</h2>
+  <p class="mt-2 text-forest-100 max-w-2xl">Here's what's happening with your membership, dues and upcoming events.</p>
+</div>
+
+<!-- Quick stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Dues Status</p>
+      <i data-lucide="credit-card" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">
+      {% if current_due %}
+        {% if current_due.status == 'paid' %}Paid
+        {% elif current_due.status == 'pending' %}Pending
+        {% else %}Unpaid{% endif %}
+      {% else %}No dues{% endif %}
+    </p>
+    <p class="field-hint mt-1">
+      {% if current_due %}{{ current_due.semester }}{% else %}No record{% endif %}
+    </p>
+  </div>
+
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Upcoming RSVPs</p>
+      <i data-lucide="calendar-check" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ rsvped_events | length }}</p>
+    <p class="field-hint mt-1">Events you're attending</p>
+  </div>
+
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Announcements</p>
+      <i data-lucide="megaphone" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ announcements | length }}</p>
+    <p class="field-hint mt-1">Recent updates</p>
+  </div>
+
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Program</p>
+      <i data-lucide="badge-check" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ user.grad_year or '—' }}</p>
+    <p class="field-hint mt-1">Grad year &middot; {{ user.program or '—' }}</p>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <!-- Left column -->
+  <div class="lg:col-span-2 space-y-6">
+
+    <!-- Dues status card -->
+    <div class="card p-6" data-animate>
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+            <i data-lucide="credit-card" class="w-5 h-5 text-forest-600"></i> Membership Dues
+          </h3>
+          <p class="text-sm text-ink-500 mt-1">
+            {% if current_due %}{{ current_due.semester }} semester dues{% else %}No dues on record{% endif %}
+          </p>
+        </div>
+        {% if current_due %}
+          {% if current_due.status == 'paid' %}
+            <span class="badge badge-green">Paid</span>
+          {% elif current_due.status == 'pending' %}
+            <span class="badge badge-gold">Pending</span>
+          {% else %}
+            <span class="badge badge-red">Unpaid</span>
+          {% endif %}
+        {% else %}
+          <span class="badge badge-gray">No record</span>
+        {% endif %}
+      </div>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-4 bg-cream-100 border border-cream-300 rounded-lg p-4">
+        <div>
+          <p class="text-sm text-ink-500">Amount</p>
+          <p class="text-xl font-extrabold text-forest-900">
+            {% if current_due %}{{ current_due.amount | money }}{% else %}—{% endif %}
+          </p>
+        </div>
+        <div class="flex gap-2">
+          {% if current_due and current_due.status != 'paid' %}
+          <a href="/member/dues" class="btn btn-secondary btn-sm"><i data-lucide="wallet" class="w-4 h-4"></i> Pay Dues Now</a>
+          {% endif %}
+          <a href="/member/dues" class="btn btn-outline btn-sm">View Payment History <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upcoming events -->
+    <div class="card p-6" data-animate>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+          <i data-lucide="calendar-check" class="w-5 h-5 text-forest-600"></i> Your Upcoming Events
+        </h3>
+        <a href="/member/events" class="text-sm font-semibold text-forest-700 hover:text-forest-900">Manage RSVPs</a>
+      </div>
+
+      {% if rsvped_events %}
+        <div class="space-y-3">
+          {% for event in rsvped_events %}
+          <div class="flex items-center gap-4 p-3 rounded-lg bg-cream-100 border border-cream-300">
+            <div class="w-12 h-12 rounded-lg bg-forest-800 text-cream-50 flex flex-col items-center justify-center leading-none shrink-0">
+              <span class="text-[10px] font-semibold uppercase">{{ event.date.strftime('%b') }}</span>
+              <span class="text-base font-extrabold">{{ event.date.day }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-forest-900 truncate">{{ event.title }}</p>
+              <p class="text-xs text-ink-500">{{ event.time }} &middot; {{ event.location }}</p>
+            </div>
+            <span class="badge badge-green shrink-0">Going</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm text-ink-500">You haven't RSVP'd to any upcoming events yet.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Right column -->
+  <div class="space-y-6">
+
+    <!-- Announcements -->
+    <div class="card p-6" data-animate>
+      <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2 mb-4">
+        <i data-lucide="megaphone" class="w-5 h-5 text-forest-600"></i> Recent Announcements
+      </h3>
+      {% if announcements %}
+        <div class="space-y-4">
+          {% for ann in announcements %}
+          <div class="border-b border-cream-300 last:border-0 pb-4 last:pb-0">
+            <p class="font-semibold text-forest-900 text-sm">{{ ann.title }}</p>
+            <p class="text-sm text-ink-700 mt-1 leading-relaxed">{{ ann.body }}</p>
+            <p class="field-hint mt-1.5">{{ ann.date | datetimeformat }}</p>
+            {% if ann.link_url %}
+            <a href="{{ ann.link_url }}" class="btn btn-outline btn-sm mt-2">
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i> Learn more
+            </a>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm text-ink-500">No recent announcements.</p>
+      {% endif %}
+    </div>
+
+    <!-- Quick links -->
+    <div class="card p-6" data-animate>
+      <h3 class="font-bold text-forest-900 text-lg mb-4">Quick Links</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <a href="/member/profile" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+          <i data-lucide="user" class="w-5 h-5 text-forest-700"></i>
+          <span class="text-sm font-semibold text-forest-900">Edit Profile</span>
+        </a>
+        <a href="/member/resources" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+          <i data-lucide="library" class="w-5 h-5 text-forest-700"></i>
+          <span class="text-sm font-semibold text-forest-900">Resources</span>
+        </a>
+        <a href="/member/dues" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+          <i data-lucide="receipt" class="w-5 h-5 text-forest-700"></i>
+          <span class="text-sm font-semibold text-forest-900">Receipts</span>
+        </a>
+        <a href="/member/events" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+          <i data-lucide="calendar-check" class="w-5 h-5 text-forest-700"></i>
+          <span class="text-sm font-semibold text-forest-900">Events</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  if (window.lucide) window.lucide.createIcons();
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide) window.lucide.createIcons();
+  });
+</script>
+{% endblock %}

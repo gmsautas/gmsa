@@ -1,0 +1,77 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Finance — MoMo Verification{% endblock %}
+{% block page_title %}Finance{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">MoMo Verification</h2>
+    <p class="text-sm text-ink-500 mt-1">Mobile money payments awaiting manual confirmation.</p>
+  </div>
+</div>
+
+{% if momo_pending %}
+<div class="table-card" x-data="tablePager({{ momo_pending | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900 flex items-center gap-2">
+      <i data-lucide="smartphone" class="w-5 h-5 text-forest-600"></i> Pending MoMo Payments
+    </h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Member</th>
+          <th>Description</th>
+          <th class="text-right">Amount</th>
+          <th>Proof</th>
+          <th class="text-right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in momo_pending %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="whitespace-nowrap">{{ t.created_at | datetimeformat }}</td>
+          <td class="font-semibold text-forest-900">{{ t.donor_name or '—' }}</td>
+          <td class="text-ink-500">{{ t.description or '—' }}</td>
+          <td class="text-right font-semibold whitespace-nowrap">{{ t.amount | money }}</td>
+          <td>
+            {% if t.proof_url %}
+            <a href="{{ t.proof_url }}" target="_blank" rel="noopener" class="font-semibold text-forest-700 hover:text-forest-900">View</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <div class="flex justify-end gap-2">
+              <form method="post" action="/admin/finance/momo/{{ t.id }}/approve">
+                <button type="submit" class="btn btn-secondary btn-sm">
+                  <i data-lucide="check" class="w-3.5 h-3.5"></i> Approve
+                </button>
+              </form>
+              <form method="post" action="/admin/finance/momo/{{ t.id }}/reject">
+                <button type="submit" class="btn btn-outline btn-sm">
+                  <i data-lucide="x" class="w-3.5 h-3.5"></i> Reject
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% else %}
+<div class="card p-12 text-center">
+  <i data-lucide="smartphone" class="w-12 h-12 text-forest-300 mx-auto mb-3"></i>
+  <p class="font-semibold text-forest-900 mb-1">Nothing to verify</p>
+  <p class="text-sm text-ink-500">No MoMo payments awaiting verification.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Content — Home &amp; About Page{% endblock %}
+{% block page_title %}Content{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+{% if saved %}
+<div class="mb-6 rounded-lg bg-forest-50 border border-forest-200 px-4 py-3 text-sm text-forest-800 font-medium" role="alert">
+  Saved.
+</div>
+{% endif %}
+
+<div class="mb-6">
+  <h2 class="text-2xl font-extrabold text-forest-900">Home &amp; About Page Content</h2>
+  <p class="text-sm text-ink-500 mt-1">
+    Edit the wording shown on the public home page and About page. Blank fields fall back to the
+    original default copy, so leaving something blank never breaks the page.
+  </p>
+</div>
+
+{% macro block_form(key, title, show_bullets=false) %}
+  {% set b = blocks.get(key) %}
+  <div class="card p-6">
+    <h3 class="font-bold text-forest-900 mb-4">{{ title }}</h3>
+    <form method="post" action="/admin/content/pages/block/{{ key }}" class="space-y-4">
+      <div>
+        <label class="field-label">Eyebrow <span class="text-ink-400 font-normal">(small label above the heading, optional)</span></label>
+        <input name="eyebrow" type="text" class="field-input" value="{{ b.eyebrow if b else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Heading</label>
+        <input name="heading" type="text" class="field-input" value="{{ b.heading if b else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Body</label>
+        <textarea name="body" class="field-textarea" rows="4">{{ b.body if b else '' }}</textarea>
+      </div>
+      {% if show_bullets %}
+      <div>
+        <label class="field-label">Bullet Points <span class="text-ink-400 font-normal">(one per line)</span></label>
+        <textarea name="bullets" class="field-textarea" rows="3">{{ (b.extra.bullets | join('\n')) if b and b.extra and b.extra.bullets else '' }}</textarea>
+      </div>
+      {% endif %}
+      <div class="flex justify-end">
+        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      </div>
+    </form>
+  </div>
+{% endmacro %}
+
+<h3 class="font-bold text-forest-900 text-lg mb-3 mt-8">Home Page</h3>
+<div class="grid lg:grid-cols-2 gap-6">
+  {{ block_form("home_hero", "Hero") }}
+  {{ block_form("home_about_teaser", "About Teaser", show_bullets=true) }}
+  {{ block_form("home_donate_cta", "Donate Call-to-Action") }}
+</div>
+
+<h3 class="font-bold text-forest-900 text-lg mb-3 mt-10">About Page</h3>
+<div class="grid lg:grid-cols-2 gap-6">
+  {{ block_form("about_header", "Page Header") }}
+  {{ block_form("about_mission", "Mission") }}
+  {{ block_form("about_vision", "Vision") }}
+  {{ block_form("about_closing_cta", "Closing Call-to-Action") }}
+</div>
+
+<h3 class="font-bold text-forest-900 text-lg mb-3 mt-10">About Page — "What We Do" Cards</h3>
+<div class="card p-6 mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <p class="text-sm text-ink-500">These appear in order on the About page's "What We Do" section.</p>
+    <div x-data="{ open: false }">
+      <button type="button" @click="open = true" class="btn btn-outline btn-sm">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Card
+      </button>
+      <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+        <div class="card w-full max-w-sm p-6" @click.stop>
+          <h3 class="font-bold text-lg text-forest-900 mb-4">New "What We Do" Card</h3>
+          <form method="post" action="/admin/content/pages/pillars" class="space-y-4">
+            <div>
+              <label class="field-label">Icon <span class="text-ink-400 font-normal">(<a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="underline">lucide.dev</a> icon name)</span></label>
+              <input name="icon" type="text" class="field-input" placeholder="e.g. moon-star" required />
+            </div>
+            <div>
+              <label class="field-label">Title</label>
+              <input name="title" type="text" class="field-input" required />
+            </div>
+            <div>
+              <label class="field-label">Description</label>
+              <textarea name="description" class="field-textarea" required></textarea>
+            </div>
+            <div>
+              <label class="field-label">Order <span class="text-ink-400 font-normal">(optional)</span></label>
+              <input name="order_index" type="number" min="0" class="field-input" value="{{ pillars | length }}" />
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+              <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% if pillars %}
+  <div class="grid sm:grid-cols-2 gap-4">
+    {% for p in pillars %}
+    <div class="flex items-start gap-3 p-3 rounded-lg bg-cream-50 border border-cream-200">
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold text-forest-900 text-sm flex items-center gap-1.5">
+          <i data-lucide="{{ p.icon }}" class="w-3.5 h-3.5 text-forest-600"></i> {{ p.title }}
+        </p>
+        <p class="text-xs text-ink-500 mt-1">{{ p.description }}</p>
+      </div>
+      <form method="post" action="/admin/content/pages/pillars/{{ p.id }}/delete">
+        <button type="submit" class="text-ink-400 hover:text-red-600" aria-label="Remove {{ p.title }}">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-sm text-ink-500">No cards yet.</p>
+  {% endif %}
+</div>
+
+<h3 class="font-bold text-forest-900 text-lg mb-3 mt-10">About Page — Milestones Timeline</h3>
+<div class="card p-6">
+  <div class="flex items-center justify-between mb-4">
+    <p class="text-sm text-ink-500">Shown in order on the About page's "Our Journey" timeline.</p>
+    <div x-data="{ open: false }">
+      <button type="button" @click="open = true" class="btn btn-outline btn-sm">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Milestone
+      </button>
+      <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+        <div class="card w-full max-w-sm p-6" @click.stop>
+          <h3 class="font-bold text-lg text-forest-900 mb-4">New Milestone</h3>
+          <form method="post" action="/admin/content/pages/milestones" class="space-y-4">
+            <div>
+              <label class="field-label">Year <span class="text-ink-400 font-normal">(or any short label)</span></label>
+              <input name="year" type="text" class="field-input" placeholder="e.g. 2027" required />
+            </div>
+            <div>
+              <label class="field-label">Description</label>
+              <textarea name="description" class="field-textarea" required></textarea>
+            </div>
+            <div>
+              <label class="field-label">Order <span class="text-ink-400 font-normal">(optional)</span></label>
+              <input name="order_index" type="number" min="0" class="field-input" value="{{ milestones | length }}" />
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+              <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% if milestones %}
+  <div class="divide-y divide-cream-200">
+    {% for m in milestones %}
+    <div class="flex items-center justify-between gap-3 py-3">
+      <div class="min-w-0">
+        <p class="font-bold text-forest-900 text-sm">{{ m.year }}</p>
+        <p class="text-sm text-ink-700">{{ m.description }}</p>
+      </div>
+      <form method="post" action="/admin/content/pages/milestones/{{ m.id }}/delete">
+        <button type="submit" class="text-ink-400 hover:text-red-600 shrink-0" aria-label="Remove {{ m.year }} milestone">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-sm text-ink-500">No milestones yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

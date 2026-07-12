@@ -1,0 +1,110 @@
+{% extends "member_base.html" %}
+
+{% block title %}Resource Library{% endblock %}
+{% block page_title %}Resource Library{% endblock %}
+
+{% block content %}
+
+{# Compute unique categories server-side for the filter pills (resources is a list of dicts) #}
+{% set categories = [] %}
+{% for r in resources %}
+  {% if r['category'] not in categories %}
+    {% set _ = categories.append(r['category']) %}
+  {% endif %}
+{% endfor %}
+
+<div x-data='{
+  search: "",
+  category: "all",
+  resources: {{ resources | tojson }},
+  get filtered() {
+    return this.resources.filter(r =>
+      (this.category === "all" || r.category === this.category) &&
+      (r.title + " " + (r.description || "")).toLowerCase().includes(this.search.toLowerCase())
+    );
+  }
+}'>
+
+  <!-- Search + filters -->
+  <div class="card p-4 sm:p-5 mb-6" data-animate>
+    <div class="relative">
+      <i data-lucide="search" class="w-4 h-4 text-ink-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+      <label for="resource-search" class="sr-only">Search resources</label>
+      <input type="search" id="resource-search" class="field-input pl-9"
+             placeholder="Search resources by title or description&hellip;"
+             x-model="search" />
+    </div>
+    <div class="flex flex-wrap gap-2 mt-4">
+      <button type="button" class="btn btn-sm"
+              :class="category === 'all' ? 'btn-secondary' : 'btn-outline'"
+              @click="category = 'all'">All</button>
+      {% for cat in categories %}
+      <button type="button" class="btn btn-sm"
+              :class="category === '{{ cat }}' ? 'btn-secondary' : 'btn-outline'"
+              @click="category = '{{ cat }}'">{{ cat }}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Resource grid (Alpine-filtered) -->
+  <div class="grid sm:grid-cols-2 gap-4">
+    <template x-for="r in filtered" :key="r.id">
+      <div class="card card-hover p-5 flex flex-col">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-lg bg-forest-50 text-forest-700 flex items-center justify-center shrink-0">
+            <template x-if="r.type === 'pdf'"><i data-lucide="file-text" class="w-5 h-5"></i></template>
+            <template x-if="r.type === 'zip'"><i data-lucide="file-archive" class="w-5 h-5"></i></template>
+            <template x-if="r.type === 'docx'"><i data-lucide="file-type" class="w-5 h-5"></i></template>
+            <template x-if="r.type === 'link'"><i data-lucide="link" class="w-5 h-5"></i></template>
+            <template x-if="!['pdf','zip','docx','link'].includes(r.type)"><i data-lucide="file" class="w-5 h-5"></i></template>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-forest-900 leading-snug" x-text="r.title"></p>
+            <span class="badge badge-green mt-1.5 inline-block" x-text="r.category"></span>
+          </div>
+        </div>
+        <p class="text-sm text-ink-700 mt-3 leading-relaxed flex-1" x-text="r.description || ''"></p>
+        <div class="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-cream-300">
+          <p class="field-hint">
+            <span x-text="r.size || ''"></span>
+            <template x-if="r.size && r.date"> &middot; </template>
+            <span x-text="r.date || ''"></span>
+          </p>
+          <button type="button" class="btn btn-outline btn-sm"
+                  @click="r.file_url && r.file_url !== '#' ? window.open(r.file_url, '_blank', 'noopener') : (window.showToast ? window.showToast('Resource not available') : alert('Resource not available'))">
+            <template x-if="r.type === 'link'">
+              <span><i data-lucide="external-link" class="w-3.5 h-3.5 inline-block mr-1"></i> Open Link</span>
+            </template>
+            <template x-if="r.type !== 'link'">
+              <span><i data-lucide="download" class="w-3.5 h-3.5 inline-block mr-1"></i> Download</span>
+            </template>
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Empty state when no resources match filter -->
+    <template x-if="filtered.length === 0">
+      <div class="sm:col-span-2 card p-8 text-center">
+        <i data-lucide="search-x" class="w-10 h-10 text-forest-300 mx-auto"></i>
+        <p class="font-semibold text-forest-900 mt-3">No resources found</p>
+        <p class="text-sm text-ink-500 mt-1">Try adjusting your search or category filter.</p>
+      </div>
+    </template>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide) window.lucide.createIcons();
+  });
+  // Re-run lucide after Alpine renders templates
+  document.addEventListener('alpine:initialized', function () {
+    if (window.lucide) window.lucide.createIcons();
+  });
+</script>
+{% endblock %}

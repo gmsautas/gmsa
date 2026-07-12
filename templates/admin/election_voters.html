@@ -1,0 +1,183 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Voters — {{ election.title }}{% endblock %}
+{% block page_title %}Voters — {{ election.title }}{% endblock %}
+
+{% block content %}
+{% include "admin/_election_tabs.html" %}
+
+{% if error %}
+<div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+{% if revealed %}
+<div class="mb-4 rounded-lg bg-amber-50 border border-amber-300 px-4 py-3 text-sm text-amber-900" role="alert">
+  <p class="font-semibold mb-1">
+    New password for {{ revealed.user.name }} ({{ revealed.user.email }})
+    {% if not revealed.email_sent %}— <span class="text-red-700">the notification email failed to send, so this is the only copy</span>{% endif %}
+  </p>
+  <p>
+    Read this to them directly (phone, in person, WhatsApp, etc.) — it will not be shown again:
+    <code class="ml-1 px-2 py-0.5 rounded bg-white border border-amber-300 font-mono text-base font-bold tracking-wide">{{ revealed.password }}</code>
+  </p>
+  {% if revealed.email_sent %}<p class="mt-1 text-xs text-amber-700">A copy was also emailed to them, in case it does arrive.</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="card p-6 mb-6">
+  <h3 class="font-bold text-forest-900 mb-2">Voter Register</h3>
+  <p class="text-sm text-ink-500 mb-4">
+    Upload a CSV or Excel (.xlsx) file with <code>student_id</code> and <code>email</code> columns
+    (other columns like <code>name</code> are optional). Accounts are auto-created for students who
+    don't already have one, and a voter token is emailed to every new voter. Re-uploading is safe —
+    existing voters are left untouched.
+  </p>
+  <form method="post" action="/admin/elections/{{ election.id }}/register/upload" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">
+    <input type="file" name="file" accept=".csv,.xlsx" required class="field-input max-w-xs" />
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="upload" class="w-4 h-4"></i> Upload Register
+    </button>
+  </form>
+</div>
+
+<div x-data="{ selected: [] }">
+  <form method="post" action="/admin/elections/{{ election.id }}/voters/bulk" x-show="selected.length > 0" x-cloak
+        x-data="{ action: '' }"
+        @submit="if (action === 'nullify' && prompt('Type NULLIFY to invalidate ' + selected.length + ' vote(s) and reissue tokens. This cannot be undone.') !== 'NULLIFY') $event.preventDefault()"
+        class="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-lg bg-forest-50 border border-forest-200">
+    <input type="hidden" name="voter_ids" :value="selected.join(',')" />
+    <input type="hidden" name="page" value="{{ page }}" />
+    <span class="text-sm font-semibold text-forest-900" x-text="selected.length + ' selected'"></span>
+    <select name="action" x-model="action" class="field-select w-auto" required>
+      <option value="">Bulk action&hellip;</option>
+      <option value="resend_token">Resend Token</option>
+      <option value="reset_password">Reset Password</option>
+      {% if admin.role == 'superadmin' %}
+      <option value="nullify">Nullify Vote</option>
+      {% endif %}
+    </select>
+    <input x-show="action === 'nullify'" x-cloak type="text" name="reason" class="field-input w-auto min-w-[240px]"
+           placeholder="Reason (required for nullify)" />
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    <button type="button" @click="selected = []" class="btn btn-outline btn-sm">Clear Selection</button>
+  </form>
+
+  <div class="card p-0 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-semibold text-ink-500 uppercase tracking-wide border-b border-cream-300 bg-cream-50">
+            <th class="px-5 py-3 w-8">
+              <input type="checkbox" class="field-check"
+                     :checked="selected.length > 0 && selected.length === {{ voters | length }}"
+                     @change="selected = $event.target.checked ? [{{ voters | map(attribute='id') | join(',') }}] : []" />
+            </th>
+            <th class="px-5 py-3">Name</th>
+            <th class="px-5 py-3">Student ID</th>
+            <th class="px-5 py-3">Email</th>
+            <th class="px-5 py-3">Status</th>
+            <th class="px-5 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for voter in voters %}
+          <tr class="border-b border-cream-200 last:border-0">
+            <td class="px-5 py-3">
+              <input type="checkbox" class="field-check"
+                     :checked="selected.includes({{ voter.id }})"
+                     @change="$event.target.checked ? selected.push({{ voter.id }}) : selected = selected.filter(id => id !== {{ voter.id }})" />
+            </td>
+            <td class="px-5 py-3 font-semibold text-forest-900">{{ voter.user.name }}</td>
+            <td class="px-5 py-3 text-ink-700">{{ voter.user.student_id or "—" }}</td>
+            <td class="px-5 py-3 text-ink-700">{{ voter.user.email }}</td>
+            <td class="px-5 py-3">
+              <span class="badge {% if voter.has_voted %}badge-green{% else %}badge-gray{% endif %}">
+                {{ "Voted" if voter.has_voted else "Not voted" }}
+              </span>
+            </td>
+            <td class="px-5 py-3">
+              <div class="flex items-center justify-end gap-2">
+                <form method="post" action="/admin/elections/voters/{{ voter.id }}/resend-token">
+                  <input type="hidden" name="election_id" value="{{ election.id }}" />
+                  <button type="submit" class="btn btn-outline btn-sm">
+                    <i data-lucide="send" class="w-3.5 h-3.5"></i> Resend Token
+                  </button>
+                </form>
+                <form method="post" action="/admin/elections/voters/{{ voter.id }}/reset-password" onsubmit="return confirm('Issue a new password for {{ voter.user.name }}? Their current password stops working immediately.');">
+                  <input type="hidden" name="election_id" value="{{ election.id }}" />
+                  <button type="submit" class="btn btn-outline btn-sm">
+                    <i data-lucide="key-round" class="w-3.5 h-3.5"></i> Reset Password
+                  </button>
+                </form>
+                {% if voter.has_voted and admin.role == 'superadmin' %}
+                <div x-data="{ open: false }">
+                  <button type="button" @click="open = true" class="btn btn-danger btn-sm">
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Nullify
+                  </button>
+                  <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+                    <div class="card w-full max-w-sm p-6" @click.stop>
+                      <h3 class="font-bold text-lg text-forest-900 mb-2">Nullify Vote</h3>
+                      <p class="text-sm text-ink-500 mb-4">
+                        This invalidates {{ voter.user.name }}'s cast vote and emails them a new token so they can vote again.
+                      </p>
+                      <form method="post" action="/admin/elections/voters/{{ voter.id }}/nullify" class="space-y-4">
+                        <input type="hidden" name="election_id" value="{{ election.id }}" />
+                        <div>
+                          <label class="field-label">Reason</label>
+                          <textarea name="reason" class="field-textarea" placeholder="e.g. Voted under duress, requested revote" required></textarea>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                          <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+                          <button type="submit" class="btn btn-danger">Nullify & Reissue Token</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="px-5 py-8 text-center text-sm text-ink-500">No voters registered yet — upload a register from the election page.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if total_pages > 1 %}
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-cream-200 text-sm text-ink-500">
+      <p>Page {{ page }} of {{ total_pages }} — {{ voters_count }} total voter{{ "s" if voters_count != 1 else "" }}</p>
+      <div class="flex items-center gap-2">
+        {% if has_prev %}
+        <a href="?page={{ page - 1 }}&per_page={{ per_page }}" class="btn btn-outline btn-sm">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Prev
+        </a>
+        {% else %}
+        <span class="btn btn-outline btn-sm opacity-40 pointer-events-none">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Prev
+        </span>
+        {% endif %}
+        {% if has_next %}
+        <a href="?page={{ page + 1 }}&per_page={{ per_page }}" class="btn btn-outline btn-sm">
+          Next <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </a>
+        {% else %}
+        <span class="btn btn-outline btn-sm opacity-40 pointer-events-none">
+          Next <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

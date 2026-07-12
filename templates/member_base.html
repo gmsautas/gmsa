@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Member Portal{% endblock %} — GMSA UTAS</title>
+  <link rel="icon" type="image/png" href="/static/img/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          forest: { 50:'#EAF3EE',100:'#CFE4D7',200:'#A3CBB4',300:'#74AE8E',400:'#4F9270',500:'#357857',600:'#2A6347',700:'#1E4F3A',800:'#163B2B',900:'#0F2A1F' },
+          cream:  { 50:'#FFFEFB',100:'#FDFBF5',200:'#F8F3E8',300:'#F0E8D6' },
+          gold:   { 400:'#E2C275',500:'#D4AF37',600:'#B8932A' }
+        },
+        fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','sans-serif'] }
+      }}
+    };
+  </script>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="font-sans antialiased">
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  {% if flash %}
+  <div id="toast" class="fixed top-5 right-5 z-[200] max-w-xs bg-forest-900 text-cream-50 text-sm font-medium px-4 py-3 rounded-xl shadow-lg border border-forest-700" role="alert">
+    {{ flash }}
+  </div>
+  <script>setTimeout(function(){ var t=document.getElementById('toast'); if(t) t.remove(); }, 3500);</script>
+  {% endif %}
+
+  <div class="app-shell" x-data="{ sidebarOpen: false }">
+
+    <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false" class="fixed inset-0 bg-black/40 z-40 lg:hidden"></div>
+
+    <aside class="sidebar fixed lg:sticky top-0 left-0 h-screen z-50 transform transition-transform duration-200 flex flex-col"
+           :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+      <div class="p-5 flex items-center gap-2.5 border-b border-white/10">
+        <img src="/static/img/logo.png" alt="GMSA UTAS" class="h-9 w-9 shrink-0 object-contain" />
+        <div>
+          <p class="font-extrabold text-white leading-none">GMSA <span class="text-gold-400">UTAS</span></p>
+          <p class="text-xs text-forest-300 mt-1">Member Portal</p>
+        </div>
+      </div>
+
+      <nav class="flex-1 p-4 space-y-1 overflow-y-auto" aria-label="Member portal navigation">
+        <a href="/member/dashboard" class="sidebar-link {% if active_nav == 'dashboard' %}active{% endif %}">
+          <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i> Dashboard
+        </a>
+        <a href="/member/dues" class="sidebar-link {% if active_nav == 'dues' %}active{% endif %}">
+          <i data-lucide="credit-card" class="w-[18px] h-[18px]"></i> Dues &amp; Payments
+        </a>
+        <a href="/member/profile" class="sidebar-link {% if active_nav == 'profile' %}active{% endif %}">
+          <i data-lucide="user" class="w-[18px] h-[18px]"></i> My Profile
+        </a>
+        <a href="/member/resources" class="sidebar-link {% if active_nav == 'resources' %}active{% endif %}">
+          <i data-lucide="library" class="w-[18px] h-[18px]"></i> Resource Library
+        </a>
+        <a href="/member/events" class="sidebar-link {% if active_nav == 'events' %}active{% endif %}">
+          <i data-lucide="calendar-check" class="w-[18px] h-[18px]"></i> Events &amp; RSVPs
+        </a>
+        <a href="/member/elections" class="sidebar-link {% if active_nav == 'elections' %}active{% endif %}">
+          <i data-lucide="vote" class="w-[18px] h-[18px]"></i> Elections
+        </a>
+      </nav>
+
+      <div class="p-4 border-t border-white/10 space-y-1">
+        <a href="/" class="sidebar-link"><i data-lucide="arrow-left" class="w-[18px] h-[18px]"></i> Back to Website</a>
+        <a href="/logout" class="sidebar-link"><i data-lucide="log-out" class="w-[18px] h-[18px]"></i> Log Out</a>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="app-topbar sticky top-0 z-30">
+        <div class="flex items-center justify-between gap-4 px-4 sm:px-6 py-4">
+          <div class="flex items-center gap-3">
+            <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 -ml-2 rounded-md text-forest-800 hover:bg-cream-200" aria-label="Toggle sidebar">
+              <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+            <h1 class="text-lg sm:text-xl font-bold text-forest-900">{% block page_title %}Dashboard{% endblock %}</h1>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              {% if user.profile_picture_url %}
+              <img src="{{ user.profile_picture_url }}" alt="{{ user.name }}" class="w-9 h-9 rounded-full object-cover" />
+              {% else %}
+              <div class="avatar w-9 h-9 text-sm">{{ user.initials }}</div>
+              {% endif %}
+              <div class="hidden sm:block text-sm">
+                <p class="font-semibold text-forest-900 leading-none">{{ user.name }}</p>
+                <p class="text-xs text-ink-500">Member</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main id="main" class="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <script src="/static/js/main.js"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

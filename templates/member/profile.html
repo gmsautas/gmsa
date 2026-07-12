@@ -1,0 +1,211 @@
+{% extends "member_base.html" %}
+
+{% block title %}My Profile{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <!-- Left / main column -->
+  <div class="lg:col-span-2 space-y-6">
+
+    <!-- Alerts from query params -->
+    {% if pwd_ok %}
+    <div class="flex items-center gap-3 p-4 rounded-xl bg-forest-50 border border-forest-200 text-forest-800 text-sm font-medium">
+      <i data-lucide="check-circle" class="w-5 h-5 text-forest-600 shrink-0"></i>
+      Password updated successfully.
+    </div>
+    {% elif profile_ok %}
+    <div class="flex items-center gap-3 p-4 rounded-xl bg-forest-50 border border-forest-200 text-forest-800 text-sm font-medium">
+      <i data-lucide="check-circle" class="w-5 h-5 text-forest-600 shrink-0"></i>
+      Profile updated successfully.
+    </div>
+    {% elif pwd_error == '1' %}
+    <div class="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-medium">
+      <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 shrink-0"></i>
+      Current password is incorrect.
+    </div>
+    {% elif pwd_error == '2' %}
+    <div class="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-medium">
+      <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 shrink-0"></i>
+      New passwords do not match.
+    </div>
+    {% elif photo_ok %}
+    <div class="flex items-center gap-3 p-4 rounded-xl bg-forest-50 border border-forest-200 text-forest-800 text-sm font-medium">
+      <i data-lucide="check-circle" class="w-5 h-5 text-forest-600 shrink-0"></i>
+      Profile picture updated.
+    </div>
+    {% elif photo_error %}
+    <div class="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-medium">
+      <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 shrink-0"></i>
+      {{ photo_error }}
+    </div>
+    {% endif %}
+
+    <!-- Personal information -->
+    <div class="card p-6" data-animate>
+      <h2 class="font-bold text-forest-900 text-lg flex items-center gap-2 mb-4">
+        <i data-lucide="user" class="w-5 h-5 text-forest-600"></i> Personal Information
+      </h2>
+      <form method="POST" action="/member/profile" novalidate>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label for="full-name" class="field-label">Full Name</label>
+            <input type="text" id="full-name" name="name" class="field-input"
+                   value="{{ user.name }}" required />
+          </div>
+          <div class="sm:col-span-2">
+            <label for="email" class="field-label">Email</label>
+            <input type="email" id="email" name="email" class="field-input"
+                   value="{{ user.email }}" readonly aria-readonly="true" />
+            <p class="field-hint">Contact an executive to change your email</p>
+          </div>
+          <div>
+            <label for="phone" class="field-label">Phone Number</label>
+            <input type="tel" id="phone" name="phone" class="field-input"
+                   value="{{ user.phone or '' }}" />
+          </div>
+          <div>
+            <label for="program" class="field-label">Program of Study</label>
+            <input type="text" id="program" name="program" class="field-input"
+                   value="{{ user.program or '' }}" />
+          </div>
+        </div>
+
+        <!-- Communication preferences inside the profile form -->
+        <div class="mt-6 border-t border-cream-300 pt-5">
+          <h3 class="font-semibold text-forest-900 text-sm mb-3">Communication Preferences</h3>
+          <div class="space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" name="sms_opt_in" value="true" class="w-4 h-4 accent-forest-700 rounded"
+                     {% if user.sms_opt_in %}checked{% endif %} />
+              <span class="text-sm text-forest-900">
+                <strong>SMS Notifications</strong>
+                <span class="text-ink-500 ml-1">— Urgent alerts via SMS</span>
+              </span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" name="email_opt_in" value="true" class="w-4 h-4 accent-forest-700 rounded"
+                     {% if user.email_opt_in %}checked{% endif %} />
+              <span class="text-sm text-forest-900">
+                <strong>Email Newsletter</strong>
+                <span class="text-ink-500 ml-1">— Newsletters, receipts and updates</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Change password -->
+    <div class="card p-6" data-animate>
+      <h2 class="font-bold text-forest-900 text-lg flex items-center gap-2 mb-4">
+        <i data-lucide="lock" class="w-5 h-5 text-forest-600"></i> Change Password
+      </h2>
+      <form method="POST" action="/member/profile/change-password" novalidate>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label for="current-password" class="field-label">Current Password</label>
+            <input type="password" id="current-password" name="current_password" class="field-input"
+                   required autocomplete="current-password" />
+          </div>
+          <div>
+            <label for="new-password" class="field-label">New Password</label>
+            <input type="password" id="new-password" name="new_password" class="field-input"
+                   required minlength="8" autocomplete="new-password" />
+          </div>
+          <div>
+            <label for="confirm-password" class="field-label">Confirm New Password</label>
+            <input type="password" id="confirm-password" name="confirm_new" class="field-input"
+                   required minlength="8" autocomplete="new-password" />
+          </div>
+        </div>
+        <div class="mt-6">
+          <button type="submit" class="btn btn-outline">Update Password</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Right column: account summary -->
+  <div class="space-y-6">
+    <div class="card p-6 text-center" data-animate>
+      <h2 class="font-bold text-forest-900 text-lg mb-4 text-left">Account Summary</h2>
+      <div class="relative inline-block">
+        {% if user.profile_picture_url %}
+        <img src="{{ user.profile_picture_url }}" alt="{{ user.name }}" class="w-20 h-20 rounded-full object-cover" />
+        {% else %}
+        <div class="avatar w-20 h-20 text-2xl">{{ user.initials }}</div>
+        {% endif %}
+        <form method="post" action="/member/profile/photo" enctype="multipart/form-data" class="absolute -bottom-1 -right-1">
+          <label for="avatar-upload"
+                 class="flex items-center justify-center w-7 h-7 rounded-full bg-forest-700 text-white cursor-pointer hover:bg-forest-800 border-2 border-white shadow"
+                 aria-label="Upload profile picture" title="Upload profile picture">
+            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+          </label>
+          <input id="avatar-upload" name="photo" type="file" accept="image/*" class="hidden" onchange="this.form.submit()" />
+        </form>
+      </div>
+      <p class="font-bold text-forest-900 text-lg mt-3">{{ user.name }}</p>
+      <p class="mt-1"><span class="badge badge-green">{{ user.role | title }}</span></p>
+
+      <div class="mt-5 text-left space-y-3 border-t border-cream-300 pt-4">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-ink-500">Student ID</span>
+          <span class="text-sm font-semibold text-forest-900">{{ user.student_id or '—' }}</span>
+        </div>
+        {% if level %}
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-ink-500">Current Level</span>
+          <span class="text-sm font-semibold text-forest-900">Level {{ level }}</span>
+        </div>
+        {% endif %}
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-ink-500">Program Category</span>
+          <span class="text-sm font-semibold text-forest-900">{{ user.program_category | title if user.program_category else '—' }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-ink-500">Graduation Year</span>
+          <span class="text-sm font-semibold text-forest-900">{{ grad_year or '—' }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-ink-500">Email</span>
+          <span class="text-sm font-semibold text-forest-900 truncate max-w-[160px]">{{ user.email }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-ink-500">Phone</span>
+          <span class="text-sm font-semibold text-forest-900">{{ user.phone or '—' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide) window.lucide.createIcons();
+
+    // Client-side password match validation before submit
+    var pwdForm = document.querySelector('form[action="/member/profile/change-password"]');
+    if (pwdForm) {
+      pwdForm.addEventListener('submit', function (e) {
+        var np = document.getElementById('new-password').value;
+        var cp = document.getElementById('confirm-password').value;
+        if (np !== cp) {
+          e.preventDefault();
+          if (window.showToast) window.showToast('Passwords do not match');
+          else alert('Passwords do not match');
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

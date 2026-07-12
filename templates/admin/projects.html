@@ -1,0 +1,140 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Projects{% endblock %}
+{% block page_title %}Projects{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Projects</h2>
+    <p class="text-sm text-ink-500 mt-1">Manage fundraising campaigns, targets and progress.</p>
+  </div>
+  <div x-data="{ open: false }">
+    <button @click="open = true" class="btn btn-secondary">
+      <i data-lucide="plus" class="w-4 h-4"></i> New Project
+    </button>
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+      <div class="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+        <h3 class="font-bold text-lg text-forest-900 mb-4">New Project</h3>
+        <form method="post" action="/admin/projects" class="space-y-4">
+          <div>
+            <label for="pr-title" class="field-label">Title</label>
+            <input id="pr-title" name="title" type="text" class="field-input"
+                   placeholder="e.g. New Mosque Carpet Project" required
+                   oninput="document.getElementById('pr-slug').value = this.value.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')" />
+          </div>
+          <div>
+            <label for="pr-slug" class="field-label">Slug</label>
+            <input id="pr-slug" name="slug" type="text" class="field-input"
+                   placeholder="auto-generated from title" required />
+          </div>
+          <div>
+            <label for="pr-category" class="field-label">Category</label>
+            <select id="pr-category" name="category" class="field-select" required>
+              <option value="">Select a category&hellip;</option>
+              <option value="Facilities">Facilities</option>
+              <option value="Welfare">Welfare</option>
+              <option value="Education">Education</option>
+              <option value="Charity">Charity</option>
+              <option value="Events">Events</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="pr-summary" class="field-label">Description / Summary</label>
+            <textarea id="pr-summary" name="summary" class="field-textarea"
+                      placeholder="Briefly describe the project and what the funds will be used for&hellip;" required></textarea>
+          </div>
+          <div>
+            <label for="pr-target" class="field-label">Target Amount (GHS)</label>
+            <input id="pr-target" name="target" type="number" min="0" step="0.01" class="field-input"
+                   placeholder="0.00" required />
+          </div>
+          <div>
+            <label for="pr-icon" class="field-label">Icon Name</label>
+            <input id="pr-icon" name="icon" type="text" class="field-input" value="target"
+                   placeholder="e.g. layout-grid" />
+            <p class="field-hint">Use a <a href="https://lucide.dev/icons" target="_blank" rel="noopener"
+               class="font-semibold text-forest-700 hover:text-forest-900">lucide.dev</a> icon name.</p>
+          </div>
+          <div>
+            <label for="pr-status" class="field-label">Status</label>
+            <select id="pr-status" name="status" class="field-select">
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if projects %}
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  {% for p in projects %}
+  <div class="card card-hover p-5 flex flex-col">
+    <div class="flex items-start justify-between gap-3">
+      <div class="w-10 h-10 rounded-lg bg-forest-50 text-forest-700 flex items-center justify-center shrink-0">
+        <i data-lucide="{{ p.icon or 'target' }}" class="w-5 h-5"></i>
+      </div>
+      <span class="badge {% if p.status == 'open' %}badge-green{% else %}badge-gray{% endif %}">
+        {{ p.status }}
+      </span>
+    </div>
+    <span class="badge badge-gold mt-3 inline-block w-fit">{{ p.category }}</span>
+    <p class="font-bold text-forest-900 text-lg mt-2 leading-snug">{{ p.title }}</p>
+    <p class="text-sm text-ink-700 mt-2 leading-relaxed flex-1">{{ p.summary }}</p>
+    <div class="mt-4">
+      <div class="flex items-center justify-between text-sm mb-1.5">
+        <span class="font-semibold text-forest-900">{{ p.current | money }} raised</span>
+        <span class="text-ink-500">{{ p.progress_percent }}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill progress-fill-gold" style="width:{{ p.progress_percent }}%"></div>
+      </div>
+      <p class="field-hint mt-1.5">Target: {{ p.target | money }}</p>
+    </div>
+    {% if p.deadline %}
+    <p class="field-hint mt-3 flex items-center gap-1.5">
+      <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+      Deadline: {{ p.deadline | datetimeformat("%d %b %Y") }}
+    </p>
+    {% else %}
+    <p class="field-hint mt-3">No deadline set</p>
+    {% endif %}
+    <div class="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-cream-300">
+      {% if p.status == 'open' %}
+      <form method="post" action="/admin/projects">
+        <input type="hidden" name="title" value="{{ p.title }}" />
+        <input type="hidden" name="slug" value="{{ p.slug }}" />
+        <input type="hidden" name="category" value="{{ p.category }}" />
+        <input type="hidden" name="icon" value="{{ p.icon or 'target' }}" />
+        <input type="hidden" name="summary" value="{{ p.summary }}" />
+        <input type="hidden" name="target" value="{{ p.target }}" />
+        <input type="hidden" name="status" value="closed" />
+      </form>
+      <span class="text-sm text-ink-500">Active fundraiser</span>
+      {% else %}
+      <span class="badge badge-green">Completed</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card p-12 text-center">
+  <i data-lucide="target" class="w-12 h-12 text-forest-300 mx-auto mb-3"></i>
+  <p class="font-semibold text-forest-900 mb-1">No projects yet</p>
+  <p class="text-sm text-ink-500">Create your first fundraising project using the button above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

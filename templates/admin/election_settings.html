@@ -1,0 +1,53 @@
+{% extends "admin_base.html" %}
+
+{% block title %}{{ election.title }}{% endblock %}
+{% block page_title %}{{ election.title }}{% endblock %}
+
+{% block content %}
+{% include "admin/_election_tabs.html" %}
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+<div class="card p-6 max-w-xl">
+  <h3 class="font-bold text-forest-900 mb-4">Election Details</h3>
+  <form method="post" action="/admin/elections/{{ election.id }}" class="space-y-4">
+    <div>
+      <label class="field-label">Title</label>
+      <input name="title" type="text" class="field-input" value="{{ election.title }}" required />
+    </div>
+    <div>
+      <label class="field-label">Description</label>
+      <textarea name="description" class="field-textarea">{{ election.description or "" }}</textarea>
+    </div>
+    <div>
+      <label class="field-label">Voting Opens</label>
+      <input name="starts_at" type="datetime-local" class="field-input" value="{{ election.starts_at.strftime('%Y-%m-%dT%H:%M') }}" required />
+    </div>
+    <div>
+      <label class="field-label">Voting Closes</label>
+      <input name="ends_at" type="datetime-local" class="field-input" value="{{ election.ends_at.strftime('%Y-%m-%dT%H:%M') }}" required />
+    </div>
+    <div>
+      <label class="field-label">Status</label>
+      <select name="status" class="field-select">
+        {% for s in election_statuses %}
+        <option value="{{ s }}" {% if election.status == s %}selected{% endif %}>{{ s | capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-ink-700">
+      <input type="checkbox" name="auto_publish" value="1" class="field-check" {% if election.auto_publish %}checked{% endif %} />
+      Auto start/end voting based on the schedule above
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

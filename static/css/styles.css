@@ -1,0 +1,888 @@
+/* ==========================================================================
+   GMSA UTAS — Shared design system
+   Deep Green & Cream theme. Pairs with Tailwind CDN utilities.
+   Font: Inter (loaded via Google Fonts in each page <head>).
+   ========================================================================== */
+
+:root {
+  /* Brand greens */
+  --forest-50: #EAF3EE;
+  --forest-100: #CFE4D7;
+  --forest-200: #A3CBB4;
+  --forest-300: #74AE8E;
+  --forest-400: #4F9270;
+  --forest-500: #357857;
+  --forest-600: #2A6347;
+  --forest-700: #1E4F3A;
+  --forest-800: #163B2B;
+  --forest-900: #0F2A1F;
+
+  /* Cream neutrals */
+  --cream-50: #FFFEFB;
+  --cream-100: #FDFBF5;
+  --cream-200: #F8F3E8;
+  --cream-300: #F0E8D6;
+
+  /* Gold accent */
+  --gold-400: #E2C275;
+  --gold-500: #D4AF37;
+  --gold-600: #B8932A;
+
+  /* Ink (text) */
+  --ink-900: #1C2420;
+  --ink-700: #3D4A42;
+  --ink-500: #6B7A70;
+  --ink-300: #A8B5AC;
+
+  --shadow-card: 0 1px 3px rgba(15, 42, 31, 0.08), 0 1px 2px rgba(15, 42, 31, 0.06);
+  --shadow-lg: 0 12px 32px -8px rgba(15, 42, 31, 0.18);
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+}
+
+/* ---- Base ---------------------------------------------------------- */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--cream-200);
+  color: var(--ink-900);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+[x-cloak] {
+  display: none !important;
+}
+
+img {
+  max-width: 100%;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--forest-200);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--cream-100);
+}
+
+/* Accessible focus ring everywhere */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip-to-content link */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background-color: var(--forest-800);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 0.5rem 0;
+  z-index: 100;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+/* ---- Buttons -------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background-color: var(--forest-800);
+  color: var(--cream-50);
+}
+
+.btn-primary:hover {
+  background-color: var(--forest-700);
+}
+
+.btn-secondary {
+  background-color: var(--gold-500);
+  color: var(--forest-900);
+}
+
+.btn-secondary:hover {
+  background-color: var(--gold-600);
+}
+
+.btn-outline {
+  border-color: var(--forest-300);
+  color: var(--forest-800);
+  background-color: transparent;
+}
+
+.btn-outline:hover {
+  background-color: var(--forest-50);
+  border-color: var(--forest-400);
+}
+
+.btn-ghost {
+  color: var(--forest-800);
+  background-color: transparent;
+}
+
+.btn-ghost:hover {
+  background-color: var(--forest-50);
+}
+
+.btn-danger {
+  background-color: #C0392B;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background-color: #A5331F;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.btn-lg {
+  padding: 0.8125rem 1.75rem;
+  font-size: 1.0625rem;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* Opt out of .btn's default nowrap for buttons whose label can run long
+   (e.g. dynamic amounts) — lets them wrap to a second line on narrow
+   screens instead of overflowing the card. */
+.btn-wrap {
+  white-space: normal;
+  text-align: center;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- Navigation ------------------------------------------------------ */
+
+.nav-link {
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: var(--ink-700);
+  transition: color 0.15s ease;
+  position: relative;
+  padding-bottom: 2px;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--forest-800);
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 2px;
+  background-color: var(--gold-500);
+  border-radius: 2px;
+}
+
+.mobile-nav-link {
+  display: block;
+  padding: 0.625rem 0.25rem;
+  font-weight: 500;
+  color: var(--ink-700);
+  border-bottom: 1px solid var(--cream-300);
+}
+
+.mobile-nav-link.active {
+  color: var(--forest-800);
+  font-weight: 700;
+}
+
+/* ---- Cards & surfaces -------------------------------------------------- */
+
+.card {
+  background-color: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  color: var(--ink-900);
+}
+
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ---- Badges ----------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.badge-green {
+  background-color: var(--forest-50);
+  color: var(--forest-700);
+}
+
+.badge-gold {
+  background-color: #FBF2D9;
+  color: var(--gold-600);
+}
+
+.badge-red {
+  background-color: #FBEAEA;
+  color: #B3261E;
+}
+
+.badge-gray {
+  background-color: #EEF1EF;
+  color: var(--ink-500);
+}
+
+/* ---- Progress bars ------------------------------------------------------ */
+
+.progress-track {
+  width: 100%;
+  height: 0.625rem;
+  background-color: var(--cream-300);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--forest-600);
+  border-radius: 9999px;
+  transition: width 0.8s ease;
+}
+
+.progress-fill-gold {
+  background-color: var(--gold-500);
+}
+
+/* ---- Forms -------------------------------------------------------------- */
+
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin-bottom: 0.375rem;
+}
+
+.field-input,
+.field-select,
+.field-textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+  background-color: var(--cream-50);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--ink-900);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field-input:focus,
+.field-select:focus,
+.field-textarea:focus {
+  outline: none;
+  border-color: var(--forest-500);
+  box-shadow: 0 0 0 3px rgba(53, 120, 87, 0.15);
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+
+.field-hint {
+  font-size: 0.8125rem;
+  color: var(--ink-500);
+  margin-top: 0.25rem;
+}
+
+.field-error {
+  font-size: 0.8125rem;
+  color: #B3261E;
+  margin-top: 0.25rem;
+}
+
+/* Checkbox / radio */
+.field-check {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--forest-700);
+}
+
+/* ---- Section helpers ----------------------------------------------------- */
+
+.eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+
+.section-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  color: var(--forest-900);
+  letter-spacing: -0.01em;
+}
+
+/* Decorative geometric pattern divider (Islamic-inspired, subtle) */
+.pattern-divider {
+  height: 6px;
+  background-image: repeating-linear-gradient(135deg, var(--gold-500) 0 10px, var(--forest-700) 10px 20px);
+  opacity: 0.85;
+}
+
+/* ---- Tables --------------------------------------------------------------- */
+
+.table-base {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table-base th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--cream-300);
+  white-space: nowrap;
+}
+
+.table-base td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--cream-200);
+  color: var(--ink-900);
+  vertical-align: middle;
+}
+
+.table-base tbody tr:hover {
+  background-color: var(--cream-100);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+/* Collapses a wide table into stacked, labeled cards below 640px instead of
+   relying on horizontal scroll — add alongside .table-base, and a
+   data-label="..." attribute on each <td> naming its column. */
+@media (max-width: 640px) {
+  .table-collapse thead {
+    display: none;
+  }
+
+  .table-collapse,
+  .table-collapse tbody,
+  .table-collapse tr {
+    display: block;
+    width: 100%;
+  }
+
+  .table-collapse tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--cream-300);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+  }
+
+  .table-collapse tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .table-collapse td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--cream-200);
+    text-align: right;
+  }
+
+  .table-collapse td:last-child {
+    border-bottom: none;
+  }
+
+  .table-collapse td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--ink-500);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  .table-collapse td:empty::before {
+    content: none;
+  }
+}
+
+/* Bounded-height, sticky-header, paginated variant — wraps a .table-wrap
+   table in a card with a fixed max body height and a Prev/Next footer, so
+   long tables scroll internally instead of stretching the page (and stay
+   usable on mobile since .table-wrap's horizontal scroll is unaffected). */
+.table-card {
+  background-color: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.table-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--cream-200);
+}
+
+.table-scroll {
+  overflow: auto;
+  max-height: 26rem;
+}
+
+.table-scroll .table-base thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--cream-50);
+}
+
+.table-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--cream-200);
+}
+
+.table-card-foot .foot-info {
+  font-size: 0.8125rem;
+  color: var(--ink-500);
+}
+
+.table-card-foot .foot-info b {
+  color: var(--ink-900);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pager button {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.4375rem;
+  border: 1px solid var(--cream-300);
+  background-color: var(--cream-50);
+  color: var(--ink-900);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pager button.active {
+  background-color: var(--forest-800);
+  color: #fff;
+  border-color: var(--forest-800);
+}
+
+.pager button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pager button:not(:disabled):not(.active):hover {
+  border-color: var(--forest-400);
+}
+
+/* ---- App shell (member / admin sidebars) ----------------------------------- */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background-color: var(--forest-900);
+  color: var(--cream-100);
+  width: 17rem;
+  flex-shrink: 0;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-md);
+  color: var(--cream-200);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.sidebar-link.active {
+  background-color: var(--forest-700);
+  color: #fff;
+  position: relative;
+}
+
+.sidebar-link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 1.25rem;
+  background-color: var(--gold-500);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ---- Sidebar accordion groups (Finance / Content / Communications) --------- */
+
+.sidebar-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--cream-200);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-group-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+/* Expanded is a disclosure state, not "current page" — bold label only, no
+   fill, so it never visually competes with the current-page link below it. */
+.sidebar-group-toggle.expanded {
+  font-weight: 700;
+  color: #fff;
+}
+
+.sidebar-group-toggle .chev {
+  margin-left: auto;
+  transition: transform 0.18s ease;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.sidebar-group-toggle.expanded .chev {
+  transform: rotate(90deg);
+  opacity: 0.9;
+}
+
+.sidebar-group-children {
+  margin: 0 0 0 0.875rem;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.2s ease;
+}
+
+.sidebar-group-children.expanded {
+  max-height: 20rem;
+  margin: 0.25rem 0 0.25rem 0.875rem;
+}
+
+.sidebar-group-children a {
+  display: block;
+  padding: 0.4375rem 0.625rem;
+  border-radius: 0.4375rem;
+  margin-bottom: 1px;
+  font-size: 0.8125rem;
+  color: var(--cream-200);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-group-children a:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-group-children a.active {
+  color: #fff;
+  font-weight: 700;
+  background-color: var(--forest-700);
+  position: relative;
+}
+
+.sidebar-group-children a.active::before {
+  content: "";
+  position: absolute;
+  left: -1.0625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 1rem;
+  background-color: var(--gold-500);
+  border-radius: 2px;
+}
+
+.sidebar-section-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--forest-300);
+  padding: 0 0.875rem;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--cream-200);
+}
+
+.app-topbar {
+  background-color: var(--cream-50);
+  border-bottom: 1px solid var(--cream-300);
+}
+
+/* ---- Stat tiles ------------------------------------------------------------ */
+
+.stat-tile {
+  background-color: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--forest-900);
+}
+
+.stat-label {
+  font-size: 0.8125rem;
+  color: var(--ink-500);
+  font-weight: 600;
+}
+
+/* ---- Avatars ---------------------------------------------------------------- */
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--forest-100);
+  color: var(--forest-800);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ---- Tabs --------------------------------------------------------------------- */
+
+.tab-btn {
+  padding: 0.625rem 1.125rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--ink-500);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab-btn.active {
+  color: var(--forest-800);
+  border-color: var(--gold-500);
+}
+
+/* ---- Toast notifications -------------------------------------------------------- */
+
+#toast-region {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toast {
+  background-color: var(--forest-900);
+  color: #fff;
+  padding: 0.75rem 1.125rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: 14rem;
+  animation: fadeInUp 0.25s ease both;
+}
+
+/* ---- Animations ------------------------------------------------------------------ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeInUp 0.6s ease both;
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+/* ---- Native <details>/<summary> accordions (leadership boards, committees) ---------- */
+
+summary {
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary .chevron {
+  transition: transform 0.2s ease;
+}
+
+details[open]>summary .chevron {
+  transform: rotate(180deg);
+}
+
+/* ---- Decorative geometric pattern overlay (for dark hero / CTA sections) ------------- */
+
+.islamic-pattern {
+  position: relative;
+  isolation: isolate;
+}
+
+.islamic-pattern::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='none' stroke='%23D4AF37' stroke-width='1' stroke-opacity='0.18'%3E%3Cpath d='M30 0 L60 30 L30 60 L0 30 Z'/%3E%3Ccircle cx='30' cy='30' r='14'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+
+.islamic-pattern>* {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Print (receipts / financial reports) ------------------------------------------ */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

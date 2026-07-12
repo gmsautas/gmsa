@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}GMSA UTAS — About Us{% endblock %}
+{% block meta %}<meta name="description" content="Learn about GMSA UTAS — our mission, vision, what we do, and our journey serving the Muslim student community at UTAS." />{% endblock %}
+
+{% block content %}
+
+  <!-- ============================ PAGE HEADER ============================ -->
+  <section class="islamic-pattern bg-forest-900 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <p class="eyebrow text-gold-400">{{ blocks.about_header.eyebrow or "About Us" }}</p>
+      <h1 class="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">{{ blocks.about_header.heading or "Our Story, Mission & Vision" }}</h1>
+      <p class="mt-3 text-forest-100 max-w-2xl leading-relaxed">
+        {{ blocks.about_header.body or "GMSA UTAS has been a home for Muslim students at the University of Technology and Applied Sciences for nearly two decades — built on faith, brotherhood and sisterhood, and service." }}
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ MISSION & VISION ============================ -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <div class="grid sm:grid-cols-2 gap-6 lg:gap-8">
+      <div class="card p-6 sm:p-8" data-animate>
+        <span class="w-12 h-12 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 mb-5">
+          <i data-lucide="compass" class="w-6 h-6" aria-hidden="true"></i>
+        </span>
+        <p class="eyebrow">{{ blocks.about_mission.eyebrow or "Our Mission" }}</p>
+        <h2 class="section-title mt-2">{{ blocks.about_mission.heading or "Why we exist" }}</h2>
+        <p class="mt-4 text-ink-700 leading-relaxed">
+          {{ blocks.about_mission.body or "To foster a vibrant, welcoming Islamic community for students at UTAS — nurturing faith, supporting academic success, and serving the wider campus." }}
+        </p>
+      </div>
+      <div class="card p-6 sm:p-8" data-animate>
+        <span class="w-12 h-12 rounded-lg bg-gold-500/15 flex items-center justify-center text-gold-600 mb-5">
+          <i data-lucide="sparkles" class="w-6 h-6" aria-hidden="true"></i>
+        </span>
+        <p class="eyebrow">{{ blocks.about_vision.eyebrow or "Our Vision" }}</p>
+        <h2 class="section-title mt-2">{{ blocks.about_vision.heading or "Where we're headed" }}</h2>
+        <p class="mt-4 text-ink-700 leading-relaxed">
+          {{ blocks.about_vision.body or "A campus where every Muslim student feels at home, supported in their worship, studies and personal growth." }}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ WHAT WE DO ============================ -->
+  <section class="bg-cream-50 border-y border-cream-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+      <div class="max-w-2xl mb-10" data-animate>
+        <p class="eyebrow">Our Focus Areas</p>
+        <h2 class="section-title mt-3">What we do</h2>
+        <p class="mt-4 text-ink-700 leading-relaxed">
+          Everything we do falls under four broad pillars — each aimed at supporting Muslim students
+          holistically throughout their time at UTAS.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for pillar in pillars %}
+        <div class="card card-hover p-6" data-animate>
+          <span class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 mb-4">
+            <i data-lucide="{{ pillar.icon }}" class="w-5 h-5" aria-hidden="true"></i>
+          </span>
+          <h3 class="font-bold text-lg text-forest-900">{{ pillar.title }}</h3>
+          <p class="mt-2 text-sm text-ink-700 leading-relaxed">
+            {{ pillar.description }}
+          </p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ MILESTONES ============================ -->
+  <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <div class="max-w-2xl mb-10" data-animate>
+      <p class="eyebrow">Our Journey</p>
+      <h2 class="section-title mt-3">Milestones along the way</h2>
+      <p class="mt-4 text-ink-700 leading-relaxed">
+        From a small group of students to a thriving association with hundreds of active members —
+        here are a few highlights from our journey.
+      </p>
+    </div>
+
+    <ol class="relative border-l-2 border-forest-200 ml-3 space-y-10">
+      {% for m in milestones %}
+      <li class="relative pl-8" data-animate>
+        <span class="absolute -left-[calc(0.5rem+1px)] top-1 w-4 h-4 rounded-full bg-gold-500 border-2 border-cream-50"></span>
+        <p class="text-sm font-extrabold text-forest-900">{{ m.year }}</p>
+        <p class="mt-1 text-ink-700 leading-relaxed">{{ m.description }}</p>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <!-- ============================ CLOSING CTA ============================ -->
+  <section class="islamic-pattern bg-forest-800 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center" data-animate>
+      <i data-lucide="heart" class="w-10 h-10 text-gold-400 mx-auto mb-4" aria-hidden="true"></i>
+      <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">{{ blocks.about_closing_cta.heading or "Become part of our story" }}</h2>
+      <p class="mt-3 text-forest-100 max-w-2xl mx-auto leading-relaxed">
+        {{ blocks.about_closing_cta.body or "Whether you're new to campus or have been here for years, there's a place for you in GMSA UTAS. Join us as a member, or reach out if you have questions." }}
+      </p>
+      <div class="mt-8 flex flex-wrap justify-center gap-4">
+        <a href="/register" class="btn btn-secondary btn-lg">
+          <i data-lucide="user-plus" class="w-5 h-5"></i> Become a Member
+        </a>
+        <a href="/contact" class="btn btn-outline btn-lg !border-cream-100 !text-cream-50 hover:!bg-white/10">
+          <i data-lucide="mail" class="w-5 h-5"></i> Get in Touch
+        </a>
+      </div>
+    </div>
+  </section>
+
+{% endblock %}

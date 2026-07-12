@@ -1,0 +1,163 @@
+{% import "partials/social_icons.html" as social_icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}GMSA UTAS{% endblock %}</title>
+  {% block meta %}<meta name="description" content="GMSA UTAS — the home for Muslim students at UTAS." />{% endblock %}
+  <link rel="icon" type="image/png" href="/static/img/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          forest: { 50:'#EAF3EE',100:'#CFE4D7',200:'#A3CBB4',300:'#74AE8E',400:'#4F9270',500:'#357857',600:'#2A6347',700:'#1E4F3A',800:'#163B2B',900:'#0F2A1F' },
+          cream:  { 50:'#FFFEFB',100:'#FDFBF5',200:'#F8F3E8',300:'#F0E8D6' },
+          gold:   { 400:'#E2C275',500:'#D4AF37',600:'#B8932A' }
+        },
+        fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','sans-serif'] }
+      }}
+    };
+  </script>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="font-sans antialiased">
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  {% if flash %}
+  <div id="toast" class="fixed top-5 right-5 z-[200] max-w-xs bg-forest-900 text-cream-50 text-sm font-medium px-4 py-3 rounded-xl shadow-lg border border-forest-700" role="alert">
+    {{ flash }}
+  </div>
+  <script>setTimeout(function(){ var t=document.getElementById('toast'); if(t) t.remove(); }, 3500);</script>
+  {% endif %}
+
+  {% block nav %}
+  <header class="sticky top-0 z-50 bg-cream-50/95 backdrop-blur border-b border-cream-300" x-data="{ mobileOpen: false }">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
+      <div class="flex items-center justify-between h-16 lg:h-20">
+        <a href="/" class="flex items-center gap-2.5 shrink-0">
+          <img src="/static/img/logo.png" alt="GMSA UTAS" class="h-9 w-9 object-contain" />
+          <span class="font-extrabold text-lg sm:text-xl text-forest-900 tracking-tight">GMSA <span class="text-gold-600">UTAS</span></span>
+        </a>
+
+        <div class="hidden lg:flex items-center gap-7">
+          <a href="/" class="nav-link {% if active_nav == 'home' %}active{% endif %}">Home</a>
+          <a href="/about" class="nav-link {% if active_nav == 'about' %}active{% endif %}">About</a>
+          <a href="/blog" class="nav-link {% if active_nav == 'blog' %}active{% endif %}">Blog</a>
+          <a href="/leadership" class="nav-link {% if active_nav == 'leadership' %}active{% endif %}">Leadership</a>
+          <a href="/projects" class="nav-link {% if active_nav == 'projects' %}active{% endif %}">Projects</a>
+          <a href="/events" class="nav-link {% if active_nav == 'events' %}active{% endif %}">Events</a>
+          <a href="/contact" class="nav-link {% if active_nav == 'contact' %}active{% endif %}">Contact</a>
+        </div>
+
+        <div class="hidden lg:flex items-center gap-3">
+          <a href="/login" class="btn btn-ghost btn-sm">
+            <i data-lucide="log-in" class="w-4 h-4"></i> Member Login
+          </a>
+          <a href="/donate" class="btn btn-secondary btn-sm">
+            <i data-lucide="heart-handshake" class="w-4 h-4"></i> Donate
+          </a>
+        </div>
+
+        <button @click="mobileOpen = !mobileOpen" class="lg:hidden p-2 rounded-md text-forest-800 hover:bg-forest-50" aria-label="Toggle navigation" :aria-expanded="mobileOpen.toString()">
+          <i data-lucide="menu" class="w-6 h-6" x-show="!mobileOpen"></i>
+          <i data-lucide="x" class="w-6 h-6" x-show="mobileOpen" x-cloak></i>
+        </button>
+      </div>
+
+      <div x-show="mobileOpen" x-cloak x-transition class="lg:hidden pb-4 space-y-1">
+        <a href="/" class="mobile-nav-link">Home</a>
+        <a href="/about" class="mobile-nav-link">About</a>
+        <a href="/blog" class="mobile-nav-link">Blog</a>
+        <a href="/leadership" class="mobile-nav-link">Leadership</a>
+        <a href="/projects" class="mobile-nav-link">Projects</a>
+        <a href="/events" class="mobile-nav-link">Events</a>
+        <a href="/contact" class="mobile-nav-link">Contact</a>
+        <div class="flex gap-3 pt-3">
+          <a href="/login" class="btn btn-outline btn-sm flex-1">Member Login</a>
+          <a href="/donate" class="btn btn-secondary btn-sm flex-1">Donate</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+  {% endblock %}
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+  <footer class="bg-forest-900 text-cream-100">
+    <div class="pattern-divider"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+      <div>
+        <a href="/" class="flex items-center gap-2.5 mb-4">
+          <img src="/static/img/logo.png" alt="GMSA UTAS" class="h-9 w-9 object-contain" />
+          <span class="font-extrabold text-lg text-white">GMSA <span class="text-gold-400">UTAS</span></span>
+        </a>
+        <p class="text-sm text-forest-200 leading-relaxed">Serving the Muslim student community at UTAS through faith, brotherhood and sisterhood, and service.</p>
+        {% set social = org.social if org and org.social is defined else {} %}
+        <div class="flex gap-3 mt-4">
+          <a href="{{ social.instagram | default('#') }}" class="text-forest-200 hover:text-gold-400" aria-label="Instagram">{{ social_icons.instagram() }}</a>
+          <a href="{{ social.facebook | default('#') }}" class="text-forest-200 hover:text-gold-400" aria-label="Facebook">{{ social_icons.facebook() }}</a>
+          <a href="{{ social.twitter | default('#') }}" class="text-forest-200 hover:text-gold-400" aria-label="Twitter / X">{{ social_icons.twitter() }}</a>
+          <a href="{{ social.whatsapp | default('#') }}" class="text-forest-200 hover:text-gold-400" aria-label="WhatsApp"><i data-lucide="message-circle" class="w-5 h-5"></i></a>
+          <a href="{{ social.youtube | default('#') }}" class="text-forest-200 hover:text-gold-400" aria-label="YouTube">{{ social_icons.youtube() }}</a>
+        </div>
+      </div>
+      <div>
+        <h3 class="font-bold text-white mb-4">Explore</h3>
+        <ul class="space-y-2 text-sm text-forest-200">
+          <li><a href="/about" class="hover:text-white">About Us</a></li>
+          <li><a href="/blog" class="hover:text-white">Blog &amp; News</a></li>
+          <li><a href="/leadership" class="hover:text-white">Leadership</a></li>
+          <li><a href="/events" class="hover:text-white">Events Calendar</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-bold text-white mb-4">Get Involved</h3>
+        <ul class="space-y-2 text-sm text-forest-200">
+          <li><a href="/projects" class="hover:text-white">Active Projects</a></li>
+          <li><a href="/donate" class="hover:text-white">Donate</a></li>
+          <li><a href="/register" class="hover:text-white">Become a Member</a></li>
+          <li><a href="/login" class="hover:text-white">Member Portal</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-bold text-white mb-4">Contact</h3>
+        <ul class="space-y-3 text-sm text-forest-200">
+          {% if org %}
+          <li class="flex items-start gap-2"><i data-lucide="map-pin" class="w-4 h-4 mt-0.5 shrink-0"></i> {{ org.address | default('Student Centre, UTAS Campus') }}</li>
+          <li class="flex items-center gap-2"><i data-lucide="mail" class="w-4 h-4 shrink-0"></i> {{ org.email | default('info@gmsautas.org') }}</li>
+          <li class="flex items-center gap-2"><i data-lucide="phone" class="w-4 h-4 shrink-0"></i> {{ org.phone | default('+233 50 000 0000') }}</li>
+          {% else %}
+          <li class="flex items-start gap-2"><i data-lucide="map-pin" class="w-4 h-4 mt-0.5 shrink-0"></i> Student Centre, UTAS Campus</li>
+          <li class="flex items-center gap-2"><i data-lucide="mail" class="w-4 h-4 shrink-0"></i> info@gmsautas.org</li>
+          <li class="flex items-center gap-2"><i data-lucide="phone" class="w-4 h-4 shrink-0"></i> +233 50 000 0000</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-forest-700">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-forest-300">
+        <p>&copy; {{ current_year() }} GMSA UTAS. All rights reserved.</p>
+        <p>Built with care for the campus Muslim community.</p>
+      </div>
+    </div>
+  </footer>
+  {% endblock %}
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="/static/js/main.js"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

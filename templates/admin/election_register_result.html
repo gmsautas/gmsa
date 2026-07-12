@@ -1,0 +1,85 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Register Import Result{% endblock %}
+{% block page_title %}Register Import Result{% endblock %}
+
+{% block content %}
+<a href="/admin/elections/{{ election.id }}/voters" class="text-sm font-semibold text-forest-700 hover:text-forest-900 inline-flex items-center gap-1 mb-4">
+  <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Voters
+</a>
+
+<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="card p-5">
+    <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Accounts Created</p>
+    <p class="text-3xl font-extrabold text-forest-900 mt-1">{{ result.created_users }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Existing Accounts Linked</p>
+    <p class="text-3xl font-extrabold text-forest-900 mt-1">{{ result.linked_users }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Voters Added</p>
+    <p class="text-3xl font-extrabold text-forest-900 mt-1">{{ result.voters_created }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Skipped Duplicates</p>
+    <p class="text-3xl font-extrabold text-forest-900 mt-1">{{ result.skipped_duplicates }}</p>
+  </div>
+</div>
+
+{% if result.conflicts %}
+<div class="card p-6 mb-6">
+  <h3 class="font-bold text-forest-900 mb-3 flex items-center gap-2">
+    <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600"></i> Conflicts ({{ result.conflicts | length }})
+  </h3>
+  <p class="text-sm text-ink-500 mb-4">These rows were skipped — fix the source data and re-upload just the corrected rows.</p>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-semibold text-ink-500 uppercase tracking-wide border-b border-cream-300">
+          <th class="pb-2 pr-4">Row Data</th>
+          <th class="pb-2">Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in result.conflicts %}
+        <tr class="border-b border-cream-200 last:border-0">
+          <td class="py-2 pr-4 font-mono text-xs text-ink-700">{{ c.row }}</td>
+          <td class="py-2 text-red-700">{{ c.reason }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if result.email_failures %}
+<div class="card p-6">
+  <h3 class="font-bold text-forest-900 mb-3 flex items-center gap-2">
+    <i data-lucide="mail-warning" class="w-4 h-4 text-gold-600"></i> Email Delivery Failures ({{ result.email_failures | length }})
+  </h3>
+  <p class="text-sm text-ink-500 mb-3">
+    Records were still created for these — use "Resend Token" from the
+    <a href="/admin/elections/{{ election.id }}/voters" class="font-semibold text-forest-700 hover:text-forest-900">Voters page</a>
+    once the issue is resolved.
+  </p>
+  <ul class="text-sm text-ink-700 list-disc list-inside space-y-1">
+    {% for f in result.email_failures %}
+    <li>{{ f }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if not result.conflicts and not result.email_failures %}
+<div class="card p-8 text-center">
+  <i data-lucide="check-circle" class="w-10 h-10 text-forest-500 mx-auto mb-2"></i>
+  <p class="font-semibold text-forest-900">Import completed with no issues.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

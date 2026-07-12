@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}GMSA UTAS — Blog &amp; News{% endblock %}
+{% block meta %}<meta name="description" content="Read khutbah summaries, announcements, reflections and event recaps from GMSA UTAS — news and writing for the campus Muslim community." />{% endblock %}
+
+{% block content %}
+
+  <!-- ============================ PAGE HEADER ============================ -->
+  <section class="islamic-pattern bg-forest-900 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <p class="eyebrow text-gold-400">Reflections &amp; News</p>
+      <h1 class="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">GMSA Blog</h1>
+      <p class="mt-3 text-forest-100 max-w-2xl leading-relaxed">
+        Khutbah summaries, announcements, reflections and event recaps from the GMSA UTAS
+        community. Filter by category or browse everything below.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ BLOG GRID ============================ -->
+  {% set posts_json = posts | tojson %}
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16"
+           x-data='blogPage({{ posts_json | safe }})'>
+
+    <!-- Category filter pills -->
+    <div class="flex flex-wrap gap-3 mb-10" data-animate>
+      <button @click="filter = 'all'"
+              :class="filter === 'all' ? 'btn-secondary' : 'btn-outline'"
+              class="btn btn-sm">All</button>
+      <template x-for="cat in categories" :key="cat">
+        <button @click="filter = catKey(cat)"
+                :class="filter === catKey(cat) ? 'btn-secondary' : 'btn-outline'"
+                class="btn btn-sm"
+                x-text="cat"></button>
+      </template>
+    </div>
+
+    {% if not posts %}
+    <p class="text-ink-500">No blog posts published yet.</p>
+    {% else %}
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <template x-for="p in filteredPosts" :key="p.id">
+        <a :href="'/blog/' + p.slug" class="card card-hover p-6 flex flex-col" data-animate>
+          <div class="flex items-center justify-between mb-4">
+            <span class="w-11 h-11 rounded-lg bg-gold-500/20 flex items-center justify-center text-gold-600">
+              <i :data-lucide="p.icon" class="w-5 h-5" aria-hidden="true"></i>
+            </span>
+            <span class="badge badge-gray" x-text="p.category"></span>
+          </div>
+          <h3 class="font-bold text-lg text-forest-900 leading-snug" x-text="p.title"></h3>
+          <p class="mt-2 text-sm text-ink-700 leading-relaxed flex-1" x-text="p.excerpt"></p>
+          <div class="mt-4 flex items-center justify-between text-xs text-ink-500 border-t border-cream-300 pt-3">
+            <span x-text="p.author_name"></span>
+            <span x-text="p.date + ' · ' + p.read_time + ' min read'"></span>
+          </div>
+        </a>
+      </template>
+    </div>
+    {% endif %}
+  </section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function blogPage(posts) {
+    return {
+      posts: posts,
+      filter: 'all',
+      get categories() {
+        var cats = [];
+        this.posts.forEach(function(p) {
+          if (cats.indexOf(p.category) === -1) cats.push(p.category);
+        });
+        return cats;
+      },
+      get filteredPosts() {
+        var self = this;
+        if (self.filter === 'all') return self.posts;
+        return self.posts.filter(function(p) { return self.catKey(p.category) === self.filter; });
+      },
+      catKey: function(cat) {
+        return cat.toLowerCase().replace(/\s+/g, '');
+      },
+      init() {
+        this.$watch('filteredPosts', function() {
+          setTimeout(function() { if (window.lucide) window.lucide.createIcons(); }, 50);
+        });
+        setTimeout(function() { if (window.lucide) window.lucide.createIcons(); }, 100);
+      }
+    };
+  }
+</script>
+{% endblock %}

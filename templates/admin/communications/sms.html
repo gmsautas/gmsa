@@ -1,0 +1,86 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Communications — SMS{% endblock %}
+{% block page_title %}Communications{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">SMS Campaigns</h2>
+    <p class="text-sm text-ink-500 mt-1">Arkesel-powered blasts to opted-in phone numbers.</p>
+  </div>
+</div>
+
+<div class="card p-4 sm:p-6 mb-6" x-data="{ message: '' }">
+  <h3 class="font-bold text-forest-900 text-lg mb-4 flex items-center gap-2">
+    <i data-lucide="message-square" class="w-5 h-5 text-forest-600"></i> Compose SMS
+  </h3>
+  <form method="post" action="/admin/communications/sms" class="space-y-4">
+    <div>
+      <label for="sms-audience" class="field-label">Audience</label>
+      <select id="sms-audience" name="audience" class="field-select" required>
+        <option value="all">All Members</option>
+        <option value="unpaid">Unpaid Dues</option>
+        <option value="graduating">Graduating Members</option>
+        <option value="sms_opt_in">SMS Opt-in Members</option>
+      </select>
+    </div>
+    <div>
+      <label for="sms-message" class="field-label">Message</label>
+      <textarea id="sms-message" name="message" class="field-textarea"
+                placeholder="Type your SMS message&hellip;" x-model="message" required></textarea>
+      <p class="field-hint" x-text="message.length + ' characters · ' + (Math.ceil(message.length / 160) || 1) + ' SMS segment(s)'"></p>
+    </div>
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-secondary">
+        <i data-lucide="send" class="w-4 h-4"></i> Send SMS
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="table-card" x-data="tablePager({{ sms_campaigns | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900 flex items-center gap-2">
+      <i data-lucide="history" class="w-5 h-5 text-forest-600"></i> Campaign History
+    </h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Audience</th>
+          <th>Message</th>
+          <th>Recipients</th>
+          <th>Characters</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in sms_campaigns %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="whitespace-nowrap">{{ c.created_at | datetimeformat }}</td>
+          <td>{{ c.audience }}</td>
+          <td class="max-w-xs truncate text-ink-700">{{ c.message[:60] }}{% if c.message | length > 60 %}&hellip;{% endif %}</td>
+          <td>{{ c.recipients_count or 0 }}</td>
+          <td>{{ c.message | length }}</td>
+          <td>
+            <span class="badge {% if c.status == 'sent' %}badge-green{% elif c.status == 'failed' %}badge-red{% else %}badge-gold{% endif %}">
+              {{ c.status }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-ink-500 py-6">No SMS campaigns sent yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

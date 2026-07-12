@@ -1,0 +1,203 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Ballot — {{ election.title }}{% endblock %}
+{% block page_title %}{{ election.title }}{% endblock %}
+
+{% block content %}
+{% include "admin/_election_tabs.html" %}
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+{% set ballot_locked = election.display_status != 'draft' %}
+<div class="space-y-4">
+  {% if ballot_locked %}
+  <div class="rounded-lg bg-cream-100 border border-cream-300 px-4 py-3 text-sm text-ink-700 flex items-center gap-2">
+    <i data-lucide="lock" class="w-4 h-4 text-forest-600 shrink-0"></i>
+    The ballot is locked because this election is <strong>{{ election.display_status }}</strong>. Reset it to draft to change positions or candidates.
+  </div>
+  {% endif %}
+  <div class="flex items-center justify-between">
+    <h3 class="font-bold text-forest-900">Positions & Candidates</h3>
+    <div x-data="{ open: false }" {% if ballot_locked %}class="hidden"{% endif %}>
+      <button @click="open = true" class="btn btn-outline btn-sm">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Position
+      </button>
+      <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+        <div class="card w-full max-w-sm p-6" @click.stop>
+          <h3 class="font-bold text-lg text-forest-900 mb-4">New Position</h3>
+          <form method="post" action="/admin/elections/{{ election.id }}/positions" class="space-y-4">
+            <div>
+              <label class="field-label">Title</label>
+              <input name="title" type="text" class="field-input" placeholder="e.g. President" required />
+            </div>
+            <div>
+              <label class="field-label">Order <span class="text-ink-400 font-normal">(optional)</span></label>
+              <input name="order_index" type="number" min="0" class="field-input" value="0" />
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+              <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if election.positions %}
+  <div class="space-y-3">
+    {% for position in election.positions | sort(attribute='order_index') %}
+    <details class="card p-4" open>
+      <summary class="flex items-center justify-between gap-3 cursor-pointer list-none">
+        <span class="font-semibold text-forest-900 flex items-center gap-2">
+          <i data-lucide="chevron-down" class="chevron w-4 h-4 text-forest-600"></i>
+          {{ position.title }}
+          <span class="text-xs text-ink-500">({{ position.candidates | length }} candidate{{ 's' if position.candidates | length != 1 else '' }})</span>
+        </span>
+        {% if not ballot_locked %}
+        <form method="post" action="/admin/elections/positions/{{ position.id }}/delete" onsubmit="return confirm('Delete this position and all its candidates?')">
+          <button type="submit" class="text-ink-400 hover:text-red-600" aria-label="Delete {{ position.title }}">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </form>
+        {% endif %}
+      </summary>
+
+      <div class="mt-3 pt-3 border-t border-cream-200 space-y-3">
+        {% if position.candidates %}
+        {% for c in position.candidates | sort(attribute='order_index') %}
+        <div class="flex items-center justify-between gap-3 py-2 border-b border-cream-200 last:border-0">
+          <div class="flex items-center gap-3 min-w-0">
+            {% if c.photo_url %}
+            <img src="{{ c.photo_url }}" alt="{{ c.name }}" class="w-9 h-9 rounded-full object-cover shrink-0" />
+            {% else %}
+            <div class="avatar w-9 h-9 text-sm shrink-0">{{ c.name[:2] | upper }}</div>
+            {% endif %}
+            <div class="min-w-0">
+              <p class="font-semibold text-forest-900 text-sm truncate flex items-center gap-1.5">
+                {{ c.name }}
+                {% if c.user_id %}<i data-lucide="link-2" class="w-3 h-3 text-forest-500" title="Linked to a member account"></i>{% endif %}
+              </p>
+              {% if c.bio %}<p class="text-xs text-ink-500 truncate">{{ c.bio }}</p>{% endif %}
+            </div>
+          </div>
+          {% if not ballot_locked %}
+          <form method="post" action="/admin/elections/candidates/{{ c.id }}/delete">
+            <button type="submit" class="text-ink-400 hover:text-red-600" aria-label="Remove {{ c.name }}">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-sm text-ink-500">No candidates added yet.</p>
+        {% endif %}
+
+        <div x-data="{
+               open: false,
+               memberQuery: '',
+               memberResults: [],
+               selectedMember: null,
+               searchTimer: null,
+               searchMembers() {
+                 clearTimeout(this.searchTimer);
+                 const q = this.memberQuery.trim();
+                 if (q.length < 2) { this.memberResults = []; return; }
+                 this.searchTimer = setTimeout(async () => {
+                   const res = await fetch('/admin/elections/members/search?q=' + encodeURIComponent(q));
+                   const data = await res.json();
+                   this.memberResults = data.results;
+                 }, 250);
+               },
+               pickMember(m) {
+                 this.selectedMember = m;
+                 this.memberResults = [];
+                 this.memberQuery = '';
+                 this.$refs.candName.value = m.name;
+                 this.$refs.candPhotoUrl.value = m.photo_url || '';
+               },
+               clearMember() {
+                 this.selectedMember = null;
+                 this.memberQuery = '';
+                 this.memberResults = [];
+               }
+             }" {% if ballot_locked %}class="hidden"{% endif %}>
+          <button type="button" @click="open = true" class="btn btn-outline btn-sm">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add Candidate
+          </button>
+          <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+            <div class="card w-full max-w-sm p-6" @click.stop>
+              <h3 class="font-bold text-lg text-forest-900 mb-4">Add Candidate</h3>
+              <form method="post" action="/admin/elections/positions/{{ position.id }}/candidates" enctype="multipart/form-data" class="space-y-4">
+                <div>
+                  <label class="field-label">Link to an existing member <span class="text-ink-400 font-normal">(optional)</span></label>
+                  <input type="hidden" name="user_id" :value="selectedMember ? selectedMember.id : ''" />
+                  <div class="relative" x-show="!selectedMember">
+                    <input type="text" class="field-input" placeholder="Search by name or email&hellip;"
+                           x-model="memberQuery" @input="searchMembers()" autocomplete="off" />
+                    <div x-show="memberResults.length > 0" x-cloak
+                         class="absolute z-10 mt-1 w-full bg-white border border-cream-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      <template x-for="m in memberResults" :key="m.id">
+                        <button type="button" @click="pickMember(m)"
+                                class="w-full text-left px-3 py-2 text-sm hover:bg-cream-50 flex items-center justify-between gap-2">
+                          <span x-text="m.name"></span>
+                          <span class="text-xs text-ink-400" x-text="m.email"></span>
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+                  <div x-show="selectedMember" x-cloak
+                       class="flex items-center justify-between gap-2 rounded-lg bg-forest-50 border border-forest-200 px-3 py-2 text-sm">
+                    <span class="font-semibold text-forest-900" x-text="selectedMember ? (selectedMember.name + ' (' + selectedMember.email + ')') : ''"></span>
+                    <button type="button" @click="clearMember()" class="text-ink-400 hover:text-red-600" aria-label="Unlink member">
+                      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                  <p class="field-hint">Selecting a member pre-fills the name and photo below — both stay editable, since a campaign display name/photo can differ from the account.</p>
+                </div>
+                <div>
+                  <label class="field-label">Name</label>
+                  <input name="name" type="text" class="field-input" x-ref="candName" required />
+                </div>
+                <div>
+                  <label class="field-label">Bio <span class="text-ink-400 font-normal">(optional)</span></label>
+                  <textarea name="bio" class="field-textarea" placeholder="Campaign bio — write a fresh one even if this member has a profile bio"></textarea>
+                </div>
+                <div>
+                  <label class="field-label">Photo <span class="text-ink-400 font-normal">(optional)</span></label>
+                  <input name="photo" type="file" accept="image/*" class="field-input" />
+                  <input name="photo_url" type="text" class="field-input mt-2" x-ref="candPhotoUrl" placeholder="Or paste/adjust an image URL&hellip;" />
+                  <p class="field-hint">Uploading a file above always takes priority over the URL field.</p>
+                </div>
+                <div>
+                  <label class="field-label">Order <span class="text-ink-400 font-normal">(optional)</span></label>
+                  <input name="order_index" type="number" min="0" class="field-input" value="0" />
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                  <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Save Candidate</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card p-8 text-center">
+    <p class="text-sm text-ink-500">No positions added yet.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

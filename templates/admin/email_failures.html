@@ -1,0 +1,56 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Email Failures{% endblock %}
+{% block page_title %}Email Failures{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h2 class="text-2xl font-extrabold text-forest-900">Email Failures</h2>
+  <p class="text-sm text-ink-500 mt-1">
+    Every outbound email (password resets, account setup, voter tokens) that failed to send, most recent first.
+    Some of these are shown to the member who triggered them (e.g. a voter token resend); others — like a forgot-password
+    request — are deliberately hidden from the requester to avoid revealing whether an account exists, so this is the
+    only place a failed send like that is visible. Only visible to super admins.
+  </p>
+</div>
+
+<div class="table-card" x-data="tablePager({{ failures | length }}, 25)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900 flex items-center gap-2">
+      <i data-lucide="mail-warning" class="w-5 h-5 text-forest-600"></i> Recent Failures
+      <span class="text-ink-500 font-medium">&middot; {{ failures | length }} shown</span>
+    </h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Provider</th>
+          <th>Purpose</th>
+          <th>Recipient</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in failures %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="whitespace-nowrap">{{ f.created_at | datetimeformat("%d %b %Y, %H:%M") }}</td>
+          <td><span class="badge badge-gray">{{ f.provider }}</span></td>
+          <td>{{ f.purpose }}</td>
+          <td>{{ f.recipient }}</td>
+          <td class="max-w-md truncate" title="{{ f.error }}">{{ f.error }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-ink-500 py-6">No email send failures recorded — good sign.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Content — Resources{% endblock %}
+{% block page_title %}Content{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Resources</h2>
+    <p class="text-sm text-ink-500 mt-1">Downloadable files for members.</p>
+  </div>
+</div>
+
+<div class="flex flex-wrap items-center justify-end gap-3 mb-4">
+  <div x-data="{ open: false }">
+    <button @click="open = true" class="btn btn-secondary">
+      <i data-lucide="plus" class="w-4 h-4"></i> New Resource
+    </button>
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+      <div class="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+        <h3 class="font-bold text-lg text-forest-900 mb-4">New Resource</h3>
+        <form method="post" action="/admin/content/resources" enctype="multipart/form-data" class="space-y-4">
+          <div>
+            <label for="res-title" class="field-label">Title</label>
+            <input id="res-title" name="title" type="text" class="field-input"
+                   placeholder="e.g. New Muslim Starter Guide" required />
+          </div>
+          <div>
+            <label for="res-category" class="field-label">Category</label>
+            <input id="res-category" name="category" type="text" class="field-input"
+                   placeholder="e.g. Islamic Studies, Academics, Career" required />
+          </div>
+          <div>
+            <label for="res-description" class="field-label">Description</label>
+            <textarea id="res-description" name="description" class="field-textarea"
+                      placeholder="Briefly describe this resource&hellip;"></textarea>
+          </div>
+          <div>
+            <label for="res-file" class="field-label">File</label>
+            <input id="res-file" name="file" type="file" class="field-input" required />
+            <p class="field-hint">PDFs, zip archives, docs, slides — any file type is accepted.</p>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Upload</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-card" x-data="tablePager({{ resources | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900">Resources <span class="text-ink-500 font-medium">({{ resources | length }})</span></h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Category</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Date</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in resources %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="font-semibold text-forest-900">{{ r.title }}</td>
+          <td><span class="badge badge-gray">{{ r.category }}</span></td>
+          <td class="uppercase text-xs text-ink-500">{{ r.type }}</td>
+          <td class="text-ink-500 whitespace-nowrap">{{ r.size or '—' }}</td>
+          <td class="whitespace-nowrap">{{ r.date | datetimeformat("%d %b %Y") }}</td>
+          <td class="text-right whitespace-nowrap">
+            <div class="flex justify-end gap-2">
+              <a href="{{ r.file_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" aria-label="View {{ r.title }}">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </a>
+              <form method="post" action="/admin/content/resources/{{ r.id }}/delete">
+                <button type="submit" class="btn btn-outline btn-sm" aria-label="Delete {{ r.title }}">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-ink-500 py-6">No resources uploaded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

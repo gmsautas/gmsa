@@ -1,0 +1,224 @@
+{% extends "member_base.html" %}
+
+{% block title %}Vote — {{ election.title }}{% endblock %}
+{% block page_title %}Vote — {{ election.title }}{% endblock %}
+
+{% block content %}
+<a href="/member/elections" class="text-sm font-semibold text-forest-700 hover:text-forest-900 inline-flex items-center gap-1 mb-4">
+  <i data-lucide="arrow-left" class="w-4 h-4"></i> All Elections
+</a>
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+{% set positions = election.positions | sort(attribute='order_index') | list %}
+
+<div x-data='ballotWizard({{ positions_data | tojson }}, {{ election.id }})' x-cloak>
+
+  <div class="mb-6">
+    <p class="text-sm font-semibold text-forest-700 mb-2" x-text="progressLabel()"></p>
+    <div class="h-2 rounded-full bg-cream-200 overflow-hidden">
+      <div class="h-full bg-forest-600 transition-all duration-300" :style="`width: ${progressPercent()}%`"></div>
+    </div>
+  </div>
+
+  <form method="post" action="/member/elections/{{ election.id }}/ballot" class="space-y-6">
+
+    <!-- Step 0: token verification -->
+    <div class="card p-6" x-show="step === 0">
+      <h3 class="font-bold text-forest-900 mb-1">Verify Your Voter Token</h3>
+      <p class="text-sm text-ink-500 mb-4">Enter the student ID and one-time voter token that were emailed to you for this election.</p>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="student_id" class="field-label">Student ID</label>
+          <input id="student_id" name="student_id" type="text" class="field-input" x-model="studentId" required />
+        </div>
+        <div>
+          <label for="voter_token" class="field-label">Voter Token</label>
+          <input id="voter_token" name="voter_token" type="text" class="field-input uppercase" maxlength="6"
+                 x-model="voterToken" required />
+        </div>
+      </div>
+      <p class="text-sm text-red-700 mt-3" x-show="verifyError" x-text="verifyError"></p>
+    </div>
+
+    <!-- Steps 1..N: one position per screen -->
+    {% for position in positions %}
+    <div class="card p-6" x-show="step === {{ loop.index }}">
+      <h3 class="font-bold text-forest-900 mb-4">{{ position.title }}</h3>
+      {% set candidates = position.candidates | sort(attribute='order_index') | list %}
+      {% if candidates | length == 1 %}
+      {% set c = candidates[0] %}
+      <div class="flex items-center gap-3 p-3 rounded-lg border border-cream-200 mb-4">
+        {% if c.photo_url %}
+        <img src="{{ c.photo_url }}" alt="{{ c.name }}" class="w-10 h-10 rounded-full object-cover shrink-0" />
+        {% else %}
+        <div class="avatar w-10 h-10 text-sm shrink-0">{{ c.name[:2] | upper }}</div>
+        {% endif %}
+        <div class="min-w-0">
+          <p class="font-semibold text-forest-900 text-sm">{{ c.name }}</p>
+          {% if c.bio %}<p class="text-xs text-ink-500">{{ c.bio }}</p>{% endif %}
+        </div>
+      </div>
+      <p class="text-sm text-ink-500 mb-3">This position is uncontested. Do you elect {{ c.name }}?</p>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="flex items-center justify-center gap-2 p-3 rounded-lg border font-semibold cursor-pointer transition-colors"
+               :class="selections[{{ position.id }}] === 'yes' ? 'border-forest-600 bg-forest-50 text-forest-900' : 'border-cream-200 hover:bg-cream-50 text-ink-700'">
+          <input type="radio" name="position_{{ position.id }}" value="yes" class="field-check" x-model="selections[{{ position.id }}]" />
+          <i data-lucide="check" class="w-4 h-4"></i> Yes
+        </label>
+        <label class="flex items-center justify-center gap-2 p-3 rounded-lg border font-semibold cursor-pointer transition-colors"
+               :class="selections[{{ position.id }}] === 'no' ? 'border-red-600 bg-red-50 text-red-800' : 'border-cream-200 hover:bg-cream-50 text-ink-700'">
+          <input type="radio" name="position_{{ position.id }}" value="no" class="field-check" x-model="selections[{{ position.id }}]" />
+          <i data-lucide="x" class="w-4 h-4"></i> No
+        </label>
+      </div>
+      {% elif candidates %}
+      <div class="grid sm:grid-cols-2 gap-3">
+        {% for c in candidates %}
+        <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
+               :class="selections[{{ position.id }}] === {{ c.id }} ? 'border-forest-600 bg-forest-50' : 'border-cream-200 hover:bg-cream-50'">
+          <input type="radio" name="position_{{ position.id }}" value="{{ c.id }}" class="field-check"
+                 x-model.number="selections[{{ position.id }}]" />
+          {% if c.photo_url %}
+          <img src="{{ c.photo_url }}" alt="{{ c.name }}" class="w-10 h-10 rounded-full object-cover shrink-0" />
+          {% else %}
+          <div class="avatar w-10 h-10 text-sm shrink-0">{{ c.name[:2] | upper }}</div>
+          {% endif %}
+          <div class="min-w-0">
+            <p class="font-semibold text-forest-900 text-sm">{{ c.name }}</p>
+            {% if c.bio %}<p class="text-xs text-ink-500">{{ c.bio }}</p>{% endif %}
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-ink-500">No candidates for this position.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Review step -->
+    <div class="card p-6" x-show="isReviewStep()">
+      <h3 class="font-bold text-forest-900 mb-1">Review Your Ballot</h3>
+      <p class="text-sm text-ink-500 mb-4">Double check your choices below — use "Edit" to change any of them before submitting.</p>
+      <div class="divide-y divide-cream-200">
+        <template x-for="(p, idx) in positions" :key="p.id">
+          <div class="flex items-center justify-between gap-3 py-3">
+            <div class="min-w-0">
+              <p class="text-xs text-ink-500" x-text="p.title"></p>
+              <p class="font-semibold text-forest-900 text-sm" x-text="candidateName(p.id)"></p>
+            </div>
+            <button type="button" class="text-sm font-semibold text-forest-700 hover:text-forest-900 shrink-0" @click="step = idx + 1">
+              Edit
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="flex items-center gap-3">
+      <button type="button" class="btn btn-outline" x-show="step > 0" @click="back()">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+      </button>
+      <div class="ml-auto flex items-center gap-3">
+        <button type="button" class="btn btn-primary" x-show="!isReviewStep()" :disabled="!canAdvance() || verifying" @click="next()">
+          <span x-text="verifying ? 'Checking…' : 'Next'"></span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+        <button type="submit" class="btn btn-primary btn-lg" x-show="isReviewStep()">
+          <i data-lucide="check-circle" class="w-4 h-4"></i> Cast My Vote
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function ballotWizard(positions, electionId) {
+  return {
+    positions,
+    electionId,
+    step: 0,
+    studentId: "",
+    voterToken: "",
+    selections: {},
+    verifying: false,
+    verifyError: "",
+    lastStep() {
+      return this.positions.length + 1;
+    },
+    isReviewStep() {
+      return this.step === this.lastStep();
+    },
+    canAdvance() {
+      if (this.step === 0) {
+        return this.studentId.trim() !== "" && this.voterToken.trim() !== "";
+      }
+      const position = this.positions[this.step - 1];
+      if (!position) return false;
+      const sel = this.selections[position.id];
+      if ((position.candidates || []).length === 1) {
+        return sel === "yes" || sel === "no";
+      }
+      return sel != null;
+    },
+    async next() {
+      if (!this.canAdvance() || this.verifying) return;
+      if (this.step === 0) {
+        this.verifying = true;
+        this.verifyError = "";
+        try {
+          const body = new URLSearchParams({ student_id: this.studentId, voter_token: this.voterToken });
+          const res = await fetch(`/member/elections/${this.electionId}/ballot/verify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body,
+          });
+          const data = await res.json();
+          this.verifying = false;
+          if (!data.ok) {
+            this.verifyError = data.error || "Invalid student ID or voter token.";
+            return;
+          }
+        } catch (err) {
+          this.verifying = false;
+          this.verifyError = "Could not verify right now — check your connection and try again.";
+          return;
+        }
+      }
+      if (this.step < this.lastStep()) this.step++;
+    },
+    back() {
+      if (this.step > 0) this.step--;
+    },
+    candidateName(positionId) {
+      const position = this.positions.find((p) => p.id === positionId);
+      if (!position) return "";
+      const sel = this.selections[positionId];
+      const candidates = position.candidates || [];
+      if (candidates.length === 1) {
+        const c = candidates[0];
+        if (sel === "yes") return `Yes — elect ${c.name}`;
+        if (sel === "no") return `No — reject ${c.name}`;
+        return "Not selected";
+      }
+      const candidate = candidates.find((c) => c.id === sel);
+      return candidate ? candidate.name : "Not selected";
+    },
+    progressLabel() {
+      return `Step ${this.step + 1} of ${this.lastStep() + 1}`;
+    },
+    progressPercent() {
+      return Math.round((this.step / this.lastStep()) * 100);
+    },
+  };
+}
+if (window.lucide) window.lucide.createIcons();
+</script>
+{% endblock %}

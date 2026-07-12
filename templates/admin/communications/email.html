@@ -1,0 +1,98 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Communications — Email{% endblock %}
+{% block page_title %}Communications{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Email Campaigns</h2>
+    <p class="text-sm text-ink-500 mt-1">Resend-powered newsletters and notices.</p>
+  </div>
+</div>
+
+<div class="card p-4 sm:p-6 mb-6">
+  <h3 class="font-bold text-forest-900 text-lg mb-4 flex items-center gap-2">
+    <i data-lucide="mail" class="w-5 h-5 text-forest-600"></i> Compose Email
+  </h3>
+  <form method="post" action="/admin/communications/email" class="space-y-4">
+    <div>
+      <label for="email-audience" class="field-label">Audience</label>
+      <select id="email-audience" name="audience" class="field-select" required>
+        <option value="all">All Members</option>
+        <option value="unpaid">Unpaid Dues</option>
+        <option value="graduating">Graduating Members</option>
+        <option value="email_opt_in">Email Opt-in Members</option>
+      </select>
+    </div>
+    <div>
+      <label for="email-subject" class="field-label">Subject</label>
+      <input id="email-subject" name="subject" type="text" class="field-input"
+             placeholder="e.g. Ramadan 2026 Schedule &amp; How to Get Involved" required />
+    </div>
+    <div>
+      <label for="email-body" class="field-label">Body</label>
+      <textarea id="email-body" name="body" class="field-textarea"
+                rows="8"
+                placeholder="Write your newsletter content here..." required></textarea>
+      <p class="field-hint">Plain text will be wrapped in a paragraph tag before sending.</p>
+    </div>
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-secondary">
+        <i data-lucide="send" class="w-4 h-4"></i> Send Email
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="table-card" x-data="tablePager({{ email_campaigns | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900 flex items-center gap-2">
+      <i data-lucide="history" class="w-5 h-5 text-forest-600"></i> Campaign History
+    </h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Audience</th>
+          <th>Subject</th>
+          <th>Recipients</th>
+          <th>Status</th>
+          <th>Open Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in email_campaigns %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="whitespace-nowrap">{{ c.created_at | datetimeformat }}</td>
+          <td>{{ c.audience }}</td>
+          <td class="font-medium text-forest-900">{{ c.subject }}</td>
+          <td>{{ c.recipients_count or 0 }}</td>
+          <td>
+            <span class="badge {% if c.status == 'sent' %}badge-green{% elif c.status == 'failed' %}badge-red{% else %}badge-gold{% endif %}">
+              {{ c.status }}
+            </span>
+          </td>
+          <td>
+            {% if c.open_rate is not none %}
+              {{ (c.open_rate * 100) | int }}%
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-ink-500 py-6">No email campaigns sent yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

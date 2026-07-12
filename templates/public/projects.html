@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}GMSA UTAS | Projects{% endblock %}
+{% block meta %}<meta name="description" content="Explore GMSA UTAS fundraising projects and campaigns — from mosque facilities to welfare drives and donate to the causes that matter to you." />{% endblock %}
+
+{% block content %}
+
+  <!-- ============================ HEADER BAND ============================ -->
+  <section class="islamic-pattern bg-forest-900 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <p class="eyebrow text-gold-400">Make a Difference</p>
+      <h1 class="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">Fundraising Projects &amp; Campaigns</h1>
+      <p class="mt-3 text-forest-100 max-w-2xl leading-relaxed">
+        Every donation helps fund campus facilities, welfare support and community programs for
+        Muslim students at UTAS. Browse our current and completed projects below.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ PROJECTS GRID ============================ -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16"
+           x-data='projectsPage({{ projects | tojson }})'>
+
+    <!-- Filter tabs -->
+    <div class="flex flex-wrap gap-3 mb-10" data-animate>
+      <button @click="filter = 'all'" :class="filter === 'all' ? 'btn-secondary' : 'btn-outline'" class="btn btn-sm">All</button>
+      <button @click="filter = 'open'" :class="filter === 'open' ? 'btn-secondary' : 'btn-outline'" class="btn btn-sm">Open</button>
+      <button @click="filter = 'completed'" :class="filter === 'completed' ? 'btn-secondary' : 'btn-outline'" class="btn btn-sm">Completed</button>
+    </div>
+
+    {% if not projects %}
+    <p class="text-ink-500">No projects found.</p>
+    {% else %}
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <template x-for="p in filteredProjects" :key="p.id">
+        <div class="card card-hover p-6 flex flex-col" data-animate>
+          <div class="flex items-center justify-between mb-4">
+            <span class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700">
+              <i :data-lucide="p.icon" class="w-5 h-5"></i>
+            </span>
+            <span class="badge badge-green" x-text="p.category"></span>
+          </div>
+          <h3 class="font-bold text-lg text-forest-900" x-text="p.title"></h3>
+          <p class="mt-2 text-sm text-ink-700 leading-relaxed flex-1" x-text="p.summary"></p>
+          <div class="mt-5">
+            <div class="flex items-center justify-between text-sm font-semibold mb-2">
+              <span class="text-forest-800" x-text="'GHS ' + Number(p.current).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + ' raised'"></span>
+              <span class="text-ink-500" x-text="p.progress_percent + '%'"></span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" :style="'width:' + p.progress_percent + '%'"></div>
+            </div>
+            <p class="field-hint mt-2"
+               x-text="'Goal: GHS ' + Number(p.target).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + (p.deadline ? ' · Deadline: ' + p.deadline : '')"></p>
+          </div>
+          <template x-if="p.status === 'open'">
+            <a :href="'/donate?project=' + p.slug" class="btn btn-secondary btn-sm w-full mt-5">
+              <i data-lucide="heart-handshake" class="w-4 h-4"></i> Donate to this Project
+            </a>
+          </template>
+          <template x-if="p.status !== 'open'">
+            <span class="badge badge-green mt-5 self-start">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Goal Reached — Thank You!
+            </span>
+          </template>
+        </div>
+      </template>
+    </div>
+    {% endif %}
+  </section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function projectsPage(projects) {
+    return {
+      projects: projects,
+      filter: 'all',
+      get filteredProjects() {
+        var f = this.filter;
+        if (f === 'all') return this.projects;
+        if (f === 'open') return this.projects.filter(function(p) { return p.status === 'open'; });
+        if (f === 'completed') return this.projects.filter(function(p) { return p.status === 'closed'; });
+        return this.projects;
+      },
+      init() {
+        setTimeout(function() { if (window.lucide) window.lucide.createIcons(); }, 100);
+        this.$watch('filter', function() {
+          setTimeout(function() { if (window.lucide) window.lucide.createIcons(); }, 50);
+        });
+      }
+    };
+  }
+</script>
+{% endblock %}

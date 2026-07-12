@@ -1,0 +1,104 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Elections{% endblock %}
+{% block page_title %}Elections{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Elections</h2>
+    <p class="text-sm text-ink-500 mt-1">Create elections, manage candidates and voter registers.</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <a href="/admin/elections/history" class="btn btn-outline">
+      <i data-lucide="history" class="w-4 h-4"></i> Election History
+    </a>
+    <div x-data="{ open: false }">
+      <button @click="open = true" class="btn btn-secondary">
+        <i data-lucide="plus" class="w-4 h-4"></i> New Election
+      </button>
+      <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+        <div class="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+          <h3 class="font-bold text-lg text-forest-900 mb-4">New Election</h3>
+          <form method="post" action="/admin/elections" class="space-y-4">
+            <div>
+              <label for="el-title" class="field-label">Title</label>
+              <input id="el-title" name="title" type="text" class="field-input"
+                     placeholder="e.g. 2026/2027 Executive Elections" required />
+            </div>
+            <div>
+              <label for="el-description" class="field-label">Description <span class="text-ink-400 font-normal">(optional)</span></label>
+              <textarea id="el-description" name="description" class="field-textarea"
+                        placeholder="Briefly describe this election&hellip;"></textarea>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label for="el-starts" class="field-label">Voting Opens</label>
+                <input id="el-starts" name="starts_at" type="datetime-local" class="field-input" required />
+              </div>
+              <div>
+                <label for="el-ends" class="field-label">Voting Closes</label>
+                <input id="el-ends" name="ends_at" type="datetime-local" class="field-input" required />
+              </div>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-ink-700">
+              <input type="checkbox" name="is_test" value="1" class="field-check" />
+              Create as a Test Election
+            </label>
+            <p class="field-hint">Test elections are exempt from the one-election-per-year limit and can be fully exercised (candidates, voters, votes) and deleted at any time, unlike real elections.</p>
+            <p class="field-hint">The election starts in "Draft" status — open it for voting once positions, candidates and the voter register are ready.</p>
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+              <button type="submit" class="btn btn-primary">Create Election</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+{% if elections %}
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  {% for election in elections %}
+  <a href="/admin/elections/{{ election.id }}" class="card card-hover p-5 flex flex-col">
+    <div class="flex items-start justify-between gap-3">
+      <div class="w-10 h-10 rounded-lg bg-forest-50 text-forest-700 flex items-center justify-center shrink-0">
+        <i data-lucide="vote" class="w-5 h-5"></i>
+      </div>
+      <div class="flex items-center gap-1.5">
+        {% if election.is_test %}
+        <span class="badge badge-gold" title="Test/sandbox election — exempt from the one-per-year limit and freely deletable">TEST</span>
+        {% endif %}
+        <span class="badge {% if election.display_status == 'open' %}badge-green{% elif election.display_status == 'paused' %}badge-red{% elif election.display_status == 'closed' %}badge-gray{% else %}badge-gold{% endif %}">
+          {{ election.display_status }}
+        </span>
+      </div>
+    </div>
+    <p class="font-bold text-forest-900 text-lg mt-3 leading-snug">{{ election.title }}</p>
+    <p class="text-sm text-ink-500 mt-2 line-clamp-2">{{ election.description or "No description." }}</p>
+    <div class="mt-4 pt-4 border-t border-cream-300 text-xs text-ink-500 space-y-1">
+      <p><i data-lucide="calendar" class="w-3.5 h-3.5 inline-block -mt-0.5"></i> Opens {{ election.starts_at.strftime("%d %b %Y, %H:%M") }}</p>
+      <p><i data-lucide="calendar-x" class="w-3.5 h-3.5 inline-block -mt-0.5"></i> Closes {{ election.ends_at.strftime("%d %b %Y, %H:%M") }}</p>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card p-12 text-center">
+  <i data-lucide="vote" class="w-12 h-12 text-forest-300 mx-auto mb-3"></i>
+  <p class="font-semibold text-forest-900 mb-1">No elections yet</p>
+  <p class="text-sm text-ink-500">Create your first election using the "New Election" button above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

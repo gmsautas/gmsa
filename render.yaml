@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: gmsa-utas
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      # Render's free Postgres expires after 30 days; the database now lives on
+      # Neon instead (real Postgres, no forced expiry, free forever tier). Set
+      # the actual connection string directly in the Render dashboard —
+      # sync: false means a future blueprint sync won't overwrite it.
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      # Optional — add real values in the Render dashboard once you want
+      # email/SMS/payments actually working; the app boots fine without them.
+      # EMAIL_PROVIDER picks which of Resend/Brevo actually sends ("resend" or
+      # "brevo") — both are REST APIs, unaffected by Render's SMTP port block.
+      - key: EMAIL_PROVIDER
+        value: resend
+      # RESEND_FROM_EMAIL must be on a domain verified in the Resend dashboard.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_EMAIL
+        sync: false
+      # Enables the superadmin dashboard's "API Keys" page (Admin > API Keys),
+      # which stores keys encrypted in the database instead of env vars.
+      # Generate with: python -c "from cryptography.fernet import Fernet;
+      # print(Fernet.generate_key().decode())"
+      - key: SECRETS_ENCRYPTION_KEY
+        sync: false
+      - key: ARKESEL_API_KEY
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false

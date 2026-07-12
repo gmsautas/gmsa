@@ -1,0 +1,204 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Dashboard</h2>
+    <p class="text-sm text-ink-500 mt-1">Snapshot of membership, finances and activity across GMSA UTAS.</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="/admin/finance/expenses" class="btn btn-outline btn-sm"><i data-lucide="plus" class="w-4 h-4"></i> Record Expense</a>
+    <a href="/admin/communications/sms" class="btn btn-secondary btn-sm"><i data-lucide="send" class="w-4 h-4"></i> New Campaign</a>
+  </div>
+</div>
+
+<!-- Stat tiles -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Active Members</p>
+      <i data-lucide="users" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ members_count }}</p>
+    <p class="field-hint mt-1">{{ dues_unpaid }} pending dues</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Total Income</p>
+      <i data-lucide="trending-up" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ total_income | abbreviate_money }}</p>
+    <p class="field-hint mt-1">Dues, donations &amp; projects</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Total Expenses</p>
+      <i data-lucide="trending-down" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ total_expenses | abbreviate_money }}</p>
+    <p class="field-hint mt-1">Recorded by executives</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Net Balance</p>
+      <i data-lucide="banknote" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ net_balance | abbreviate_money }}</p>
+    <p class="field-hint mt-1">{{ projects | length }} active projects</p>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <!-- Recent Transactions -->
+  <div class="lg:col-span-2 card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+        <i data-lucide="receipt" class="w-5 h-5 text-forest-600"></i> Recent Transactions
+      </h3>
+      <a href="/admin/finance/income" class="text-sm font-semibold text-forest-700 hover:text-forest-900">View All</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Reference</th>
+            <th>Status</th>
+            <th class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transactions %}
+          <tr>
+            <td class="whitespace-nowrap">{{ t.created_at | datetimeformat }}</td>
+            <td class="font-semibold text-forest-900">{{ t.donor_name or '—' }}</td>
+            <td>
+              <span class="badge badge-gray">
+                {{ {'dues': 'Dues', 'donation': 'Donation', 'project': 'Project'}.get(t.type, t.type) }}
+              </span>
+            </td>
+            <td class="text-ink-500">{{ t.reference or '—' }}</td>
+            <td>
+              <span class="badge {% if t.status == 'success' %}badge-green{% elif t.status == 'pending' %}badge-gold{% elif t.status == 'failed' %}badge-red{% else %}badge-gray{% endif %}">
+                {{ t.status }}
+              </span>
+            </td>
+            <td class="text-right font-semibold whitespace-nowrap">{{ t.amount | money }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-ink-500 py-4">No transactions yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Project Funding Progress -->
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+        <i data-lucide="target" class="w-5 h-5 text-forest-600"></i> Project Funding
+      </h3>
+      <a href="/admin/projects" class="text-sm font-semibold text-forest-700 hover:text-forest-900">Manage</a>
+    </div>
+    <div class="space-y-4">
+      {% for p in projects[:4] %}
+      <div>
+        <div class="flex items-center justify-between text-sm mb-1.5">
+          <span class="font-semibold text-forest-900 truncate pr-2">{{ p.title }}</span>
+          <span class="text-ink-500 shrink-0">{{ p.progress_percent }}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill progress-fill-gold" style="width:{{ p.progress_percent }}%"></div>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-sm text-ink-500">No active projects.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6 mt-6">
+  <!-- Recent Expenses -->
+  <div class="lg:col-span-2 card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+        <i data-lucide="file-text" class="w-5 h-5 text-forest-600"></i> Recent Expenses
+      </h3>
+      <a href="/admin/finance/expenses" class="text-sm font-semibold text-forest-700 hover:text-forest-900">View All</a>
+    </div>
+    <div class="table-wrap">
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for x in recent_expenses %}
+          <tr>
+            <td class="whitespace-nowrap">{{ x.date | datetimeformat("%d %b %Y") }}</td>
+            <td>{{ x.description }}</td>
+            <td><span class="badge badge-gray">{{ x.category }}</span></td>
+            <td class="text-right font-semibold whitespace-nowrap">{{ x.amount | money }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-ink-500 py-4">No expenses recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card p-6">
+    <h3 class="font-bold text-forest-900 text-lg mb-4">Quick Actions</h3>
+    <div class="grid grid-cols-2 gap-3">
+      <a href="/admin/members" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+        <i data-lucide="user-plus" class="w-5 h-5 text-forest-700"></i>
+        <span class="text-sm font-semibold text-forest-900">Members</span>
+      </a>
+      <a href="/admin/content/blog" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+        <i data-lucide="pencil-line" class="w-5 h-5 text-forest-700"></i>
+        <span class="text-sm font-semibold text-forest-900">New Post</span>
+      </a>
+      <a href="/admin/communications/sms" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+        <i data-lucide="message-square" class="w-5 h-5 text-forest-700"></i>
+        <span class="text-sm font-semibold text-forest-900">Send SMS</span>
+      </a>
+      <a href="/admin/leadership" class="flex flex-col items-center gap-2 p-4 rounded-lg bg-cream-100 border border-cream-300 hover:bg-forest-50 text-center">
+        <i data-lucide="award" class="w-5 h-5 text-forest-700"></i>
+        <span class="text-sm font-semibold text-forest-900">Leadership</span>
+      </a>
+    </div>
+
+    <!-- Dues summary -->
+    <div class="mt-6 pt-4 border-t border-cream-300">
+      <h4 class="font-semibold text-forest-900 mb-3 text-sm">Dues Summary</h4>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-ink-700">Paid</span>
+          <span class="badge badge-green">{{ dues_paid }}</span>
+        </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-ink-700">Unpaid</span>
+          <span class="badge badge-red">{{ dues_unpaid }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Finance — Income{% endblock %}
+{% block page_title %}Finance{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Income &amp; Transactions</h2>
+    <p class="text-sm text-ink-500 mt-1">Dues payments, donations and project contributions as they land.</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Total Income</p>
+      <i data-lucide="trending-up" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ total_income | abbreviate_money }}</p>
+    <p class="field-hint mt-1">Successful transactions</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Successful</p>
+      <i data-lucide="check-circle" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ success_count }}</p>
+    <p class="field-hint mt-1">Completed payments</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Pending</p>
+      <i data-lucide="clock" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ pending_count }}</p>
+    <p class="field-hint mt-1">Awaiting confirmation</p>
+  </div>
+  <div class="stat-tile">
+    <div class="flex items-center justify-between">
+      <p class="stat-label">Failed</p>
+      <i data-lucide="x-circle" class="w-4 h-4 text-forest-400"></i>
+    </div>
+    <p class="stat-value mt-2">{{ failed_count }}</p>
+    <p class="field-hint mt-1">Unsuccessful attempts</p>
+  </div>
+</div>
+
+<div class="table-card" x-data="tablePager({{ transactions | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900 flex items-center gap-2">
+      <i data-lucide="receipt" class="w-5 h-5 text-forest-600"></i> All Transactions
+    </h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Reference</th>
+          <th>Status</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="whitespace-nowrap">{{ t.created_at | datetimeformat }}</td>
+          <td class="font-semibold text-forest-900">{{ t.donor_name or '—' }}</td>
+          <td>
+            <span class="badge badge-gray">
+              {{ {'dues': 'Dues', 'donation': 'Donation', 'project': 'Project'}.get(t.type, t.type) }}
+            </span>
+          </td>
+          <td class="text-ink-500">{{ t.description or '—' }}</td>
+          <td class="text-ink-500 whitespace-nowrap">{{ t.reference or '—' }}</td>
+          <td>
+            <span class="badge {% if t.status == 'success' %}badge-green{% elif t.status == 'pending' %}badge-gold{% elif t.status == 'failed' %}badge-red{% else %}badge-gray{% endif %}">
+              {{ t.status }}
+            </span>
+          </td>
+          <td class="text-right font-semibold whitespace-nowrap">{{ t.amount | money }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-ink-500 py-6">No transactions recorded.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

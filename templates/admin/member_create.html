@@ -1,0 +1,85 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Add Member{% endblock %}
+{% block page_title %}Add Member{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <a href="/admin/members" class="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:text-forest-900">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Members
+  </a>
+</div>
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+<div class="card p-6 max-w-2xl">
+  <h2 class="text-xl font-bold text-forest-900 mb-1">Add Member</h2>
+  <p class="text-sm text-ink-500 mb-6">
+    Creates an account and emails the member a one-click link to set their own password and get
+    started.
+  </p>
+
+  <form method="post" action="/admin/members/new" class="space-y-5">
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label for="new-name" class="field-label">Full Name</label>
+        <input id="new-name" name="name" type="text" class="field-input" placeholder="Full name" required
+               value="{{ prefill.name | default('') }}" />
+      </div>
+      <div>
+        <label for="new-email" class="field-label">Email Address</label>
+        <input id="new-email" name="email" type="email" class="field-input" placeholder="you@example.com" required
+               value="{{ prefill.email | default('') }}" />
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label for="new-phone" class="field-label">Phone Number <span class="text-ink-400 font-normal">(optional)</span></label>
+        <input id="new-phone" name="phone" type="tel" class="field-input" placeholder="e.g. 024 123 4567"
+               value="{{ prefill.phone | default('') }}" />
+      </div>
+      <div>
+        <label for="new-program" class="field-label">Program of Study <span class="text-ink-400 font-normal">(optional)</span></label>
+        <input id="new-program" name="program" type="text" class="field-input" placeholder="e.g. BSc Computer Science"
+               value="{{ prefill.program | default('') }}" />
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label for="new-student-id" class="field-label">Student ID</label>
+        <input id="new-student-id" name="student_id" type="text" inputmode="numeric" pattern="[0-9]*"
+               class="field-input" placeholder="e.g. 20220404172" required
+               value="{{ prefill.student_id | default('') }}" />
+      </div>
+      <div>
+        <label for="new-program-category" class="field-label">Program Category</label>
+        <select id="new-program-category" name="program_category" class="field-select" required>
+          <option value="" disabled {% if not prefill.program_category %}selected{% endif %}>Select category</option>
+          <option value="diploma"       {% if prefill.program_category == 'diploma'       %}selected{% endif %}>Diploma</option>
+          <option value="degree"        {% if prefill.program_category == 'degree'        %}selected{% endif %}>Degree (Bachelor's)</option>
+          <option value="postgraduate"  {% if prefill.program_category == 'postgraduate'  %}selected{% endif %}>Postgraduate Diploma</option>
+          <option value="masters"       {% if prefill.program_category == 'masters'       %}selected{% endif %}>Master's</option>
+          <option value="phd"           {% if prefill.program_category == 'phd'           %}selected{% endif %}>PhD</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-3 pt-2">
+      <a href="/admin/members" class="btn btn-outline">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="user-plus" class="w-4 h-4"></i> Create Account
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

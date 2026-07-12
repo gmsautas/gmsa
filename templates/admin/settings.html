@@ -1,0 +1,251 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Settings{% endblock %}
+{% block page_title %}Organization Settings{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h2 class="text-2xl font-extrabold text-forest-900">Organization Settings</h2>
+  <p class="text-sm text-ink-500 mt-1">Manage contact details, social links and MoMo payment information shown across the site.</p>
+</div>
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+<form method="post" action="/admin/settings" class="space-y-6">
+
+  <div class="card p-6">
+    <h3 class="font-bold text-lg text-forest-900 mb-4">Organization Identity</h3>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="field-label">Short Name</label>
+        <input name="name" type="text" class="field-input" value="{{ org.name }}" required />
+      </div>
+      <div>
+        <label class="field-label">Full Name</label>
+        <input name="full_name" type="text" class="field-input" value="{{ org.full_name }}" required />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="field-label">Tagline</label>
+        <input name="tagline" type="text" class="field-input" value="{{ org.tagline }}" required />
+      </div>
+      <div>
+        <label class="field-label">Founding Year</label>
+        <input name="founding_year" type="number" class="field-input" value="{{ org.founding_year }}" required />
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-bold text-lg text-forest-900 mb-4">Contact Details</h3>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="field-label">Email</label>
+        <input name="email" type="email" class="field-input" value="{{ org.email }}" required />
+      </div>
+      <div>
+        <label class="field-label">Phone</label>
+        <input name="phone" type="text" class="field-input" value="{{ org.phone }}" required />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="field-label">Address</label>
+        <input name="address" type="text" class="field-input" value="{{ org.address }}" required />
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-bold text-lg text-forest-900 mb-4">Social Links</h3>
+    <p class="field-hint mb-4">Leave a field blank to hide that icon on the public Contact page.</p>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="field-label">Instagram</label>
+        <input name="instagram" type="url" class="field-input" placeholder="https://instagram.com/..." value="{{ org.social.get('instagram', '') if org.social else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Facebook</label>
+        <input name="facebook" type="url" class="field-input" placeholder="https://facebook.com/..." value="{{ org.social.get('facebook', '') if org.social else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Twitter / X</label>
+        <input name="twitter" type="url" class="field-input" placeholder="https://x.com/..." value="{{ org.social.get('twitter', '') if org.social else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">WhatsApp</label>
+        <input name="whatsapp" type="url" class="field-input" placeholder="https://wa.me/..." value="{{ org.social.get('whatsapp', '') if org.social else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">YouTube</label>
+        <input name="youtube" type="url" class="field-input" placeholder="https://youtube.com/..." value="{{ org.social.get('youtube', '') if org.social else '' }}" />
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="save" class="w-4 h-4"></i> Save Settings
+    </button>
+  </div>
+</form>
+
+{% if admin.role == 'superadmin' %}
+<form method="post" action="/admin/settings/payment" class="space-y-6 mt-6">
+
+  <div class="card p-6">
+    <h3 class="font-bold text-lg text-forest-900 mb-4 flex items-center gap-2">
+      <i data-lucide="smartphone" class="w-4 h-4 text-forest-600"></i> MoMo Payment Details
+    </h3>
+    <p class="field-hint mb-4">Shown to members who choose to pay dues via Mobile Money instead of Paystack.</p>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="field-label">MoMo Number</label>
+        <input name="momo_number" type="text" class="field-input" placeholder="+233 24 000 0000" value="{{ org.momo_number or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Registered Name</label>
+        <input name="momo_name" type="text" class="field-input" placeholder="e.g. GMSA UTAS" value="{{ org.momo_name or '' }}" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-bold text-lg text-forest-900 mb-4 flex items-center gap-2">
+      <i data-lucide="landmark" class="w-4 h-4 text-forest-600"></i> Bank Transfer Details
+    </h3>
+    <p class="field-hint mb-4">Shown on the public Donate page as an alternative for donors who can't use Paystack or MoMo.</p>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="field-label">Bank Name</label>
+        <input name="bank_name" type="text" class="field-input" placeholder="e.g. GCB Bank" value="{{ org.bank_name or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Account Name</label>
+        <input name="bank_account_name" type="text" class="field-input" placeholder="e.g. GMSA UTAS" value="{{ org.bank_account_name or '' }}" />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="field-label">Account Number</label>
+        <input name="bank_account_number" type="text" class="field-input" placeholder="e.g. 1234567890123" value="{{ org.bank_account_number or '' }}" />
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="save" class="w-4 h-4"></i> Save Payment Details
+    </button>
+  </div>
+</form>
+{% else %}
+<div class="card p-6 mt-6 text-sm text-ink-500">
+  <i data-lucide="lock" class="w-4 h-4 inline -mt-1 mr-1"></i>
+  MoMo and bank transfer details can only be changed by a super admin.
+</div>
+{% endif %}
+
+{% if admin.role == 'superadmin' %}
+<form method="post" action="/admin/settings/email" class="space-y-6 mt-6">
+
+  <div class="card p-6">
+    <h3 class="font-bold text-lg text-forest-900 mb-4 flex items-center gap-2">
+      <i data-lucide="mail" class="w-4 h-4 text-forest-600"></i> Email & SMS
+    </h3>
+    <p class="field-hint mb-4">
+      Controls which provider sends transactional email/SMS and where it sends from. Leave any field
+      blank to fall back to the server's environment-variable default (currently
+      provider = "{{ env_settings.email_provider }}"). Changing this takes effect on the very next
+      send — no redeploy needed. API keys themselves are managed separately on the
+      <a href="/admin/api-keys" class="text-forest-700 underline">API Keys</a> page.
+    </p>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="field-label">Active Email Provider</label>
+        <select name="email_provider" class="field-input">
+          <option value="" {% if not org.email_provider %}selected{% endif %}>
+            Use environment default ({{ env_settings.email_provider }})
+          </option>
+          <option value="resend" {% if org.email_provider == 'resend' %}selected{% endif %}>Resend</option>
+          <option value="brevo" {% if org.email_provider == 'brevo' %}selected{% endif %}>Brevo</option>
+          <option value="ses" {% if org.email_provider == 'ses' %}selected{% endif %}>Amazon SES</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Arkesel Sender ID</label>
+        <input name="arkesel_sender_id" type="text" class="field-input" placeholder="{{ env_settings.arkesel_sender_id }}" value="{{ org.arkesel_sender_id or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Resend From Email</label>
+        <input name="resend_from_email" type="text" class="field-input" placeholder="{{ env_settings.resend_from_email }}" value="{{ org.resend_from_email or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Brevo From Email</label>
+        <input name="brevo_from_email" type="text" class="field-input" placeholder="{{ env_settings.brevo_from_email }}" value="{{ org.brevo_from_email or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Amazon SES From Email</label>
+        <input name="ses_from_email" type="text" class="field-input" placeholder="{{ env_settings.ses_from_email }}" value="{{ org.ses_from_email or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Amazon SES Region</label>
+        <input name="ses_region" type="text" class="field-input" placeholder="{{ env_settings.ses_region }}" value="{{ org.ses_region or '' }}" />
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="save" class="w-4 h-4"></i> Save Email & SMS Settings
+    </button>
+  </div>
+</form>
+{% else %}
+<div class="card p-6 mt-6 text-sm text-ink-500">
+  <i data-lucide="lock" class="w-4 h-4 inline -mt-1 mr-1"></i>
+  Email & SMS provider settings can only be changed by a super admin.
+</div>
+{% endif %}
+
+<form method="post" action="/admin/settings/dues" class="space-y-6 mt-6">
+
+  <div class="card p-6">
+    <h3 class="font-bold text-lg text-forest-900 mb-4 flex items-center gap-2">
+      <i data-lucide="coins" class="w-4 h-4 text-forest-600"></i> Dues Amounts
+    </h3>
+    <p class="field-hint mb-4">
+      Per-semester membership dues, in GHS. Leave a field blank to fall back to the server default.
+    </p>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="field-label">Flat Dues Amount</label>
+        <input name="dues_amount_ghs" type="number" min="0" class="field-input" placeholder="{{ env_settings.dues_amount_ghs }}" value="{{ org.dues_amount_ghs if org.dues_amount_ghs is not none else '' }}" />
+        <p class="field-hint mt-1">Used when a member's level/tier can't be determined.</p>
+      </div>
+      <div></div>
+      <div>
+        <label class="field-label">Level 100</label>
+        <input name="dues_amount_level_100" type="number" min="0" class="field-input" placeholder="{{ env_settings.dues_amount_level_100 }}" value="{{ org.dues_amount_level_100 if org.dues_amount_level_100 is not none else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Continuing</label>
+        <input name="dues_amount_continuing" type="number" min="0" class="field-input" placeholder="{{ env_settings.dues_amount_continuing }}" value="{{ org.dues_amount_continuing if org.dues_amount_continuing is not none else '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Final Year</label>
+        <input name="dues_amount_final_year" type="number" min="0" class="field-input" placeholder="{{ env_settings.dues_amount_final_year }}" value="{{ org.dues_amount_final_year if org.dues_amount_final_year is not none else '' }}" />
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="save" class="w-4 h-4"></i> Save Dues Amounts
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

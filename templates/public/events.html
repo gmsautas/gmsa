@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}GMSA UTAS — Events &amp; Activities{% endblock %}
+{% block meta %}<meta name="description" content="Browse the GMSA UTAS events calendar — weekly halaqahs, Jumu'ah, Eid celebrations, competitions and more. Filter by category and RSVP." />{% endblock %}
+
+{% block content %}
+
+  <!-- ============================ PAGE HEADER ============================ -->
+  <section class="islamic-pattern bg-forest-900 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <p class="eyebrow text-gold-400">What's On</p>
+      <h1 class="mt-2 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">Events &amp; Activity Calendar</h1>
+      <p class="mt-3 text-forest-100 max-w-2xl leading-relaxed">
+        From weekly halaqahs and Jumu'ah to Eid celebrations and signature events — here's
+        everything happening at GMSA UTAS. Filter by category or browse the full calendar.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ EVENTS LIST ============================ -->
+  {% set events_json = events | tojson %}
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16"
+           x-data='eventsPage({{ events_json | safe }})'>
+
+    <!-- Filters: category pills + month/year select -->
+    <div class="flex flex-wrap items-center gap-3 mb-10" data-animate>
+      <div class="flex flex-wrap gap-3">
+        <button @click="filter = 'all'"
+                :class="filter === 'all' ? 'btn-secondary' : 'btn-outline'"
+                class="btn btn-sm">All Categories</button>
+        <template x-for="cat in categories" :key="cat">
+          <button @click="filter = catKey(cat)"
+                  :class="filter === catKey(cat) ? 'btn-secondary' : 'btn-outline'"
+                  class="btn btn-sm"
+                  x-text="cat"></button>
+        </template>
+      </div>
+      <div class="sm:ml-auto">
+        <label for="events-month" class="sr-only">Filter by month</label>
+        <select id="events-month" class="field-select" x-model="monthFilter">
+          <option value="all">All Months</option>
+          <template x-for="m in months" :key="m.value">
+            <option :value="m.value" x-text="m.label"></option>
+          </template>
+        </select>
+      </div>
+    </div>
+
+    {% if not events %}
+    <p class="text-ink-500">No events scheduled at the moment.</p>
+    {% else %}
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <template x-for="e in filteredEvents" :key="e.id">
+        <div class="card card-hover p-5 flex flex-col" data-animate>
+          <div class="flex items-center justify-between mb-3">
+            <div class="w-12 h-12 rounded-lg bg-forest-800 text-cream-50 flex flex-col items-center justify-center leading-none shrink-0">
+              <span class="text-[10px] font-semibold uppercase" x-text="monthLabel(e.date)"></span>
+              <span class="text-lg font-extrabold" x-text="dayLabel(e.date)"></span>
+            </div>
+            <span class="badge badge-gold" x-text="e.category"></span>
+          </div>
+          <h3 class="font-bold text-base text-forest-900 leading-snug" x-text="e.title"></h3>
+          <p class="mt-1.5 text-sm text-ink-700 leading-relaxed line-clamp-2 flex-1"
+             x-text="e.is_public ? e.description : 'Visible to logged-in members.'"></p>
+          <div class="mt-3 pt-3 border-t border-cream-300 text-xs text-ink-500 space-y-1.5">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="clock" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span x-text="e.time + (e.end_time ? ' – ' + e.end_time : '')"></span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5" aria-hidden="true"></i>
+              <span x-text="e.location"></span>
+            </span>
+          </div>
+          <template x-if="e.rsvp_required">
+            <a href="/login" class="btn btn-outline btn-sm mt-3 w-full">
+              <i data-lucide="log-in" class="w-3.5 h-3.5" aria-hidden="true"></i> Login to RSVP
+            </a>
+          </template>
+          <template x-if="!e.rsvp_required">
+            <p class="mt-3 text-xs text-ink-500 flex items-center gap-1.5">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-forest-600" aria-hidden="true"></i>
+              Open to all — no RSVP needed
+            </p>
+          </template>
+          <span x-show="!e.is_public" class="badge badge-gray mt-2 self-start">
+            <i data-lucide="lock" class="w-3 h-3" aria-hidden="true"></i> Members Only
+          </span>
+        </div>
+      </template>
+      <template x-if="filteredEvents.length === 0">
+        <p class="text-ink-500 sm:col-span-2 lg:col-span-3">No events match the selected filters.</p>
+      </template>
+    </div>
+    {% endif %}
+  </section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function eventsPage(events) {
+    return {
+      events: events,
+      filter: 'all',
+      monthFilter: 'all',
+      get categories() {
+        var cats = [];
+        this.events.forEach(function(e) {
+          if (cats.indexOf(e.category) === -1) cats.push(e.category);
+        });
+        return cats;
+      },
+      get months() {
+        var map = {};
+        this.events.forEach(function(e) {
+          var d = new Date(e.date + 'T00:00:00');
+          var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          if (!map[key]) {
+            map[key] = {
+              value: key,
+              label: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+              sortKey: d.getFullYear() * 12 + d.getMonth()
+            };
+          }
+        });
+        return Object.values(map).sort(function(a, b) { return a.sortKey - b.sortKey; });
+      },
+      get sortedEvents() {
+        return this.events.slice().sort(function(a, b) {
+          return new Date(a.date) - new Date(b.date);
+        });
+      },
+      get filteredEvents() {
+        var self = this;
+        return this.sortedEvents.filter(function(e) {
+          var d = new Date(e.date + 'T00:00:00');
+          var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          var monthOk = self.monthFilter === 'all' || key === self.monthFilter;
+          var catOk = self.filter === 'all' || self.catKey(e.category) === self.filter;
+          return monthOk && catOk;
+        });
+      },
+      catKey: function(cat) {
+        return cat.toLowerCase().replace(/\s+/g, '');
+      },
+      monthLabel: function(dateStr) {
+        var d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString(undefined, { month: 'short' });
+      },
+      dayLabel: function(dateStr) {
+        var d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString(undefined, { day: 'numeric' });
+      },
+      init() {
+        var now = new Date();
+        var currentKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        if (this.months.some(function(m) { return m.value === currentKey; })) {
+          this.monthFilter = currentKey;
+        }
+        setTimeout(function() { if (window.lucide) window.lucide.createIcons(); }, 100);
+        this.$watch('filteredEvents', function() {
+          setTimeout(function() { if (window.lucide) window.lucide.createIcons(); }, 50);
+        });
+      }
+    };
+  }
+</script>
+{% endblock %}

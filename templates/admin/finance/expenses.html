@@ -1,0 +1,107 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Finance — Expenses{% endblock %}
+{% block page_title %}Finance{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Expenses</h2>
+    <p class="text-sm text-ink-500 mt-1">Recorded outgoings with receipts and category breakdowns.</p>
+  </div>
+  <div x-data="{ open: false }">
+    <button @click="open = true" class="btn btn-secondary">
+      <i data-lucide="plus" class="w-4 h-4"></i> Record Expense
+    </button>
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+      <div class="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+        <h3 class="font-bold text-lg text-forest-900 mb-4">Record Expense</h3>
+        <form method="post" action="/admin/finance/expenses" class="space-y-4">
+          <div>
+            <label for="ex-description" class="field-label">Description</label>
+            <input id="ex-description" name="description" type="text" class="field-input"
+                   placeholder="e.g. Iftar groceries — Week 4" required />
+          </div>
+          <div>
+            <label for="ex-category" class="field-label">Category</label>
+            <select id="ex-category" name="category" class="field-select" required>
+              <option value="">Select a category&hellip;</option>
+              <option value="Welfare">Welfare</option>
+              <option value="Programs">Programs</option>
+              <option value="Facilities">Facilities</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Charity">Charity</option>
+              <option value="Events">Events</option>
+              <option value="Communications">Communications</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="ex-amount" class="field-label">Amount (GHS)</label>
+            <input id="ex-amount" name="amount" type="number" min="0" step="0.01" class="field-input"
+                   placeholder="0.00" required />
+          </div>
+          <div>
+            <label for="ex-date" class="field-label">Date</label>
+            <input id="ex-date" name="date" type="date" class="field-input" required />
+          </div>
+          <div>
+            <label for="ex-receipt" class="field-label">Receipt URL <span class="text-ink-400 font-normal">(optional)</span></label>
+            <input id="ex-receipt" name="receipt_url" type="url" class="field-input"
+                   placeholder="https://..." />
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-card" x-data="tablePager({{ expenses | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900 flex items-center gap-2">
+      <i data-lucide="file-text" class="w-5 h-5 text-forest-600"></i> Expenses
+      <span class="text-ink-500 font-medium">&middot; Total {{ total_expenses | abbreviate_money }}</span>
+    </h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Receipt</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for x in expenses %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="whitespace-nowrap">{{ x.date | datetimeformat("%d %b %Y") }}</td>
+          <td>{{ x.description }}</td>
+          <td><span class="badge badge-gray">{{ x.category }}</span></td>
+          <td>
+            {% if x.receipt_url %}
+            <a href="{{ x.receipt_url }}" target="_blank" rel="noopener"
+               class="font-semibold text-forest-700 hover:text-forest-900">View</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-right font-semibold whitespace-nowrap">{{ x.amount | money }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-ink-500 py-6">No expenses recorded.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

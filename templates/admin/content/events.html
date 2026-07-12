@@ -1,0 +1,137 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Content — Events{% endblock %}
+{% block page_title %}Content{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Events</h2>
+    <p class="text-sm text-ink-500 mt-1">Weekly halaqahs, signature events and one-offs.</p>
+  </div>
+</div>
+
+<div class="flex flex-wrap items-center justify-end gap-3 mb-4">
+  <div x-data="{ open: false }">
+    <button @click="open = true" class="btn btn-secondary">
+      <i data-lucide="plus" class="w-4 h-4"></i> New Event
+    </button>
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+      <div class="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+        <h3 class="font-bold text-lg text-forest-900 mb-4">New Event</h3>
+        <form method="post" action="/admin/content/events" class="space-y-4">
+          <div>
+            <label for="ev-title" class="field-label">Title</label>
+            <input id="ev-title" name="title" type="text" class="field-input"
+                   placeholder="e.g. Tuesday Halaqah: Stories of the Prophets" required />
+          </div>
+          <div>
+            <label for="ev-category" class="field-label">Category</label>
+            <select id="ev-category" name="category" class="field-select" required>
+              <option value="">Select a category&hellip;</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Halaqah">Halaqah</option>
+              <option value="Signature Event">Signature Event</option>
+              <option value="Orientation">Orientation</option>
+              <option value="Competition">Competition</option>
+              <option value="Fundraiser">Fundraiser</option>
+              <option value="Eid">Eid</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="ev-date" class="field-label">Date</label>
+              <input id="ev-date" name="date" type="date" class="field-input" required />
+            </div>
+            <div>
+              <label for="ev-time" class="field-label">Time</label>
+              <input id="ev-time" name="time" type="time" class="field-input" required />
+            </div>
+          </div>
+          <div>
+            <label for="ev-location" class="field-label">Location</label>
+            <input id="ev-location" name="location" type="text" class="field-input"
+                   placeholder="e.g. Main Musallah, Student Centre" required />
+          </div>
+          <div>
+            <label for="ev-description" class="field-label">Description</label>
+            <textarea id="ev-description" name="description" class="field-textarea"
+                      placeholder="Describe this event&hellip;" required></textarea>
+          </div>
+          <div>
+            <label for="ev-icon" class="field-label">Icon</label>
+            <input id="ev-icon" name="icon" type="text" class="field-input" value="calendar"
+                   placeholder="e.g. calendar" />
+          </div>
+          <div>
+            <label for="ev-capacity" class="field-label">Capacity <span class="text-ink-400 font-normal">(optional)</span></label>
+            <input id="ev-capacity" name="capacity" type="number" min="1" class="field-input"
+                   placeholder="Leave blank for unlimited" />
+          </div>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
+              <input type="checkbox" name="is_public" value="true" class="field-check" />
+              Public event (visible on website)
+            </label>
+            <label class="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
+              <input type="checkbox" name="rsvp_required" value="true" class="field-check" />
+              RSVP Required
+            </label>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Event</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-card" x-data="tablePager({{ events | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900">Events <span class="text-ink-500 font-medium">({{ events | length }})</span></h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Date</th>
+          <th>Location</th>
+          <th>Category</th>
+          <th>Visibility</th>
+          <th class="text-right">RSVP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="font-semibold text-forest-900">{{ e.title }}</td>
+          <td class="whitespace-nowrap">{{ e.date | datetimeformat("%d %b %Y") }}</td>
+          <td>{{ e.location }}</td>
+          <td><span class="badge badge-gray">{{ e.category }}</span></td>
+          <td>
+            <span class="badge {% if e.is_public %}badge-green{% else %}badge-gray{% endif %}">
+              {{ 'Public' if e.is_public else 'Members Only' }}
+            </span>
+          </td>
+          <td class="text-right">
+            <span class="badge {% if e.rsvp_required %}badge-gold{% else %}badge-gray{% endif %}">
+              {{ 'Required' if e.rsvp_required else 'No' }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-ink-500 py-6">No events found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

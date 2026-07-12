@@ -1,0 +1,8 @@
+# Test-only dependencies, on top of requirements.txt. Not needed in
+# production -- install with:
+#   pip install -r requirements.txt -r requirements-dev.txt
+-r requirements.txt
+
+pytest
+pytest-asyncio
+aiosqlite

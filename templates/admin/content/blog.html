@@ -1,0 +1,175 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Content — Blog Posts{% endblock %}
+{% block page_title %}Content{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <div>
+    <h2 class="text-2xl font-extrabold text-forest-900">Blog Posts</h2>
+    <p class="text-sm text-ink-500 mt-1">Khutbah summaries and articles published to the public site.</p>
+  </div>
+</div>
+
+{% macro blog_fields(p=none) %}
+  <div>
+    <label class="field-label">Title</label>
+    <input name="title" type="text" class="field-input" placeholder="e.g. Friday Khutbah Summary" value="{{ p.title if p else '' }}" required />
+  </div>
+  {% if p %}
+  <div>
+    <label class="field-label">Slug</label>
+    <input name="slug" type="text" class="field-input" placeholder="e.g. friday-khutbah-summary" value="{{ p.slug }}" required />
+    <p class="field-hint">Used in the post URL: /blog/&lt;slug&gt;. Change with care — it changes the post's public URL.</p>
+  </div>
+  <div>
+    <label class="field-label">Excerpt</label>
+    <textarea name="excerpt" class="field-textarea" placeholder="A short summary shown on the blog listing card" required>{{ p.excerpt }}</textarea>
+  </div>
+  {% else %}
+  <p class="field-hint">The URL slug and listing excerpt are generated automatically from the title and content — you can fine-tune them later from Edit.</p>
+  {% endif %}
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <label class="field-label">Category</label>
+      <input name="category" type="text" class="field-input" placeholder="e.g. Khutbah Summary" value="{{ p.category if p else '' }}" required />
+    </div>
+    <div>
+      <label class="field-label">Icon</label>
+      <input name="icon" type="text" class="field-input" value="{{ p.icon if p else 'book-open' }}" />
+    </div>
+  </div>
+  <p class="field-hint">Byline: posted as <strong>{{ p.author_name if p else admin.name }}</strong>{% if (p.author_role if p else admin.title) %} &middot; {{ p.author_role if p else admin.title }}{% endif %} — set automatically from your account. Update your title from Members &rarr; Edit.</p>
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <label class="field-label">Date</label>
+      <input name="date" type="date" class="field-input" value="{{ p.date.isoformat() if p and p.date else '' }}" required />
+    </div>
+    <div>
+      <label class="field-label">Read Time (min)</label>
+      <input name="read_time" type="number" min="1" class="field-input" value="{{ p.read_time if p else 3 }}" />
+    </div>
+  </div>
+  <div>
+    <label class="field-label">Content</label>
+    <textarea name="content" class="field-textarea" rows="6" placeholder="Write one paragraph per line&hellip;" required>{{ (p.content | join('\n')) if p else '' }}</textarea>
+    <p class="field-hint">Each line becomes a paragraph on the post page.</p>
+  </div>
+  <div>
+    <label class="field-label">Arabic Content <span class="text-ink-400 font-normal">(optional)</span></label>
+    <textarea name="content_ar" class="field-textarea" rows="4" dir="rtl" lang="ar" placeholder="النص العربي هنا&hellip;">{{ ((p.content_ar or []) | join('\n')) if p else '' }}</textarea>
+    <p class="field-hint">Optional — shown as a right-to-left Arabic section below the English content.</p>
+  </div>
+  <div>
+    <label class="field-label">Cover Image <span class="text-ink-400 font-normal">(optional)</span></label>
+    {% if p and p.image_url %}
+    <img src="{{ p.image_url }}" alt="" class="w-full h-28 object-cover rounded-lg mb-2" />
+    {% endif %}
+    <input name="image" type="file" accept="image/*" class="field-input" />
+    <p class="field-hint">Only shown on the full post page — never on blog listing or homepage cards.{% if p %} Leave blank to keep the current image.{% endif %}</p>
+  </div>
+  <div>
+    <label class="field-label">Status</label>
+    <select name="status" class="field-select">
+      <option value="published" {% if p and p.status == 'published' %}selected{% endif %}>Published</option>
+      <option value="draft" {% if p and p.status == 'draft' %}selected{% endif %}>Draft</option>
+    </select>
+  </div>
+{% endmacro %}
+
+<div class="flex flex-wrap items-center justify-end gap-3 mb-4">
+  <div x-data="{ open: false }">
+    <button @click="open = true" class="btn btn-secondary">
+      <i data-lucide="plus" class="w-4 h-4"></i> New Blog Post
+    </button>
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+      <div class="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+        <h3 class="font-bold text-lg text-forest-900 mb-4">New Blog Post</h3>
+        <form method="post" action="/admin/content/blog" enctype="multipart/form-data" class="space-y-4">
+          {{ blog_fields() }}
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Publish Post</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-card" x-data="tablePager({{ posts | length }}, 10)">
+  <div class="table-card-head">
+    <h4 class="font-bold text-forest-900">Blog Posts <span class="text-ink-500 font-medium">({{ posts | length }})</span></h4>
+  </div>
+  <div class="table-scroll">
+    <table class="table-base">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Category</th>
+          <th>Author</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in posts %}
+        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+          <td class="font-semibold text-forest-900">{{ p.title }}</td>
+          <td><span class="badge badge-gray">{{ p.category }}</span></td>
+          <td class="text-ink-500 whitespace-nowrap">{{ p.author_name or '—' }}</td>
+          <td class="whitespace-nowrap">{{ p.date | datetimeformat("%d %b %Y") }}</td>
+          <td>
+            <span class="badge {% if p.status == 'published' %}badge-green{% else %}badge-gold{% endif %}">
+              {{ p.status or 'published' }}
+            </span>
+          </td>
+          <td class="text-right whitespace-nowrap">
+            <div class="flex justify-end gap-2" x-data="{ open: false }">
+              <a href="/blog/{{ p.slug }}" target="_blank" rel="noopener"
+                 class="btn btn-outline btn-sm" aria-label="View {{ p.title }}">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </a>
+              <button type="button" @click="open = true" class="btn btn-outline btn-sm" aria-label="Edit {{ p.title }}">
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              </button>
+              <form method="post" action="/admin/content/blog/{{ p.id }}/delete" onsubmit="return confirm('Delete this blog post? This cannot be undone.');">
+                <button type="submit" class="btn btn-outline btn-sm" aria-label="Delete {{ p.title }}">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </form>
+
+              <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="open = false">
+                <div class="card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto text-left" @click.stop>
+                  <h3 class="font-bold text-lg text-forest-900 mb-4">Edit Blog Post</h3>
+                  <form method="post" action="/admin/content/blog/{{ p.id }}/edit" enctype="multipart/form-data" class="space-y-4">
+                    {{ blog_fields(p) }}
+                    <div class="flex justify-end gap-3 mt-6">
+                      <button type="button" @click="open = false" class="btn btn-outline">Cancel</button>
+                      <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-ink-500 py-6">No blog posts found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "partials/table_pager_foot.html" %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>if (window.lucide) window.lucide.createIcons();</script>
+{% endblock %}

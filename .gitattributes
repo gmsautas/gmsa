@@ -1,0 +1,5 @@
+# Shell scripts must always use LF, regardless of the checkout platform or a
+# contributor's local core.autocrlf — a CRLF shell script fails to run inside
+# the Linux container it's actually executed in (Docker/Render/etc.).
+*.sh text eol=lf
+Dockerfile text eol=lf

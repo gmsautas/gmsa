@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  GMSA UTAS — Home
+{% endblock %}
+{% block meta %}
+  <meta name="description" content="GMSA UTAS is the home for Muslim students at UTAS — prayer times, events, blog, leadership, projects and ways to give back." />
+{% endblock %}
+
+{% block extra_head %}
+  <script src="/static/js/prayer-times.js" defer></script>
+{% endblock %}
+
+{% block content %}
+  <!-- ============================ HERO ============================ -->
+  <section class="islamic-pattern bg-forest-900 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 grid lg:grid-cols-2 gap-12 items-center">
+      <div data-animate>
+        <p class="eyebrow text-gold-400">{{ blocks.home_hero.eyebrow or "Welcome to GMSA UTAS" }}</p>
+        <h1 class="mt-3 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">{{ blocks.home_hero.heading or "Connecting Muslim students across UTAS" }}</h1>
+        <p class="mt-5 text-lg text-forest-100 max-w-xl leading-relaxed">{{ blocks.home_hero.body or "Faith, brotherhood and sisterhood, and service to campus and community — join us for weekly halaqahs, Friday khutbahs, welfare support, and a community that feels like home away from home." }}</p>
+        <div class="mt-8 flex flex-wrap gap-4">
+          <a href="/register" class="btn btn-secondary btn-lg"><i data-lucide="user-plus" class="w-5 h-5"></i> Become a Member</a>
+          <a href="/projects" class="btn btn-outline btn-lg !border-cream-100 !text-cream-50 hover:!bg-white/10"><i data-lucide="target" class="w-5 h-5"></i> See Our Projects</a>
+        </div>
+
+        <div class="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-forest-200">
+          <div class="flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-gold-400"></i> {{ active_members }}+ active members
+          </div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="calendar" class="w-4 h-4 text-gold-400"></i> Weekly programs
+          </div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-gold-400"></i> Transparent finances
+          </div>
+        </div>
+      </div>
+
+      <!-- Prayer times card -->
+      <div class="card p-6 sm:p-8 animate-fade-up" data-animate>
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="text-lg font-bold text-forest-900 flex items-center gap-2"><i data-lucide="moon-star" class="w-5 h-5 text-forest-700"></i> Today's Prayer Times</h2>
+          <span class="badge badge-gold">{{ prayer_times.location_label if prayer_times and prayer_times.location_label else 'GMSA UTAS' }}</span>
+        </div>
+        <p class="text-sm text-ink-500 mb-5" data-prayer-date>Loading date&hellip;</p>
+
+        {% if prayer_times and (prayer_times.fajr or prayer_times.dhuhr or prayer_times.asr or prayer_times.maghrib or prayer_times.isha) %}
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-3 text-center">
+          <div class="rounded-lg bg-forest-50 border border-forest-100 py-3">
+            <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Fajr</p>
+            <p class="mt-1 font-bold text-forest-900" data-prayer-name="Fajr" data-prayer-time="{{ prayer_times.fajr.strftime('%H:%M') if prayer_times.fajr else '' }}">{{ prayer_times.fajr | timeformat if prayer_times.fajr else '--:--' }}</p>
+          </div>
+          <div class="rounded-lg bg-forest-50 border border-forest-100 py-3">
+            <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Sunrise</p>
+            <p class="mt-1 font-bold text-forest-900">{{ prayer_times.sunrise | timeformat if prayer_times.sunrise else '--:--' }}</p>
+          </div>
+          <div class="rounded-lg bg-forest-50 border border-forest-100 py-3">
+            <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Dhuhr</p>
+            <p class="mt-1 font-bold text-forest-900" data-prayer-name="Dhuhr" data-prayer-time="{{ prayer_times.dhuhr.strftime('%H:%M') if prayer_times.dhuhr else '' }}">{{ prayer_times.dhuhr | timeformat if prayer_times.dhuhr else '--:--' }}</p>
+          </div>
+          <div class="rounded-lg bg-forest-50 border border-forest-100 py-3">
+            <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Asr</p>
+            <p class="mt-1 font-bold text-forest-900" data-prayer-name="Asr" data-prayer-time="{{ prayer_times.asr.strftime('%H:%M') if prayer_times.asr else '' }}">{{ prayer_times.asr | timeformat if prayer_times.asr else '--:--' }}</p>
+          </div>
+          <div class="rounded-lg bg-forest-50 border border-forest-100 py-3 col-span-1">
+            <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Maghrib</p>
+            <p class="mt-1 font-bold text-forest-900" data-prayer-name="Maghrib" data-prayer-time="{{ prayer_times.maghrib.strftime('%H:%M') if prayer_times.maghrib else '' }}">{{ prayer_times.maghrib | timeformat if prayer_times.maghrib else '--:--' }}</p>
+          </div>
+          <div class="rounded-lg bg-forest-50 border border-forest-100 py-3 col-span-2 sm:col-span-1">
+            <p class="text-xs font-semibold text-ink-500 uppercase tracking-wide">Isha</p>
+            <p class="mt-1 font-bold text-forest-900" data-prayer-name="Isha" data-prayer-time="{{ prayer_times.isha.strftime('%H:%M') if prayer_times.isha else '' }}">{{ prayer_times.isha | timeformat if prayer_times.isha else '--:--' }}</p>
+          </div>
+        </div>
+
+        <div class="mt-5 flex items-center justify-between rounded-lg bg-forest-50 border border-forest-100 px-4 py-3">
+          <div class="flex items-center gap-2 text-sm font-semibold text-forest-800">
+            <i data-lucide="bell" class="w-4 h-4"></i>
+            Next: <span data-prayer-next-name>—</span> at <span data-prayer-next-time>--:--</span>
+          </div>
+          <div class="font-mono text-sm font-bold text-forest-900 tabular-nums" data-prayer-countdown>00:00:00</div>
+        </div>
+        <p class="field-hint mt-3">Updated by the GMSA UTAS executive team.</p>
+        {% else %}
+        <div class="rounded-lg bg-forest-50 border border-forest-100 py-8 text-center text-sm text-ink-700">
+          Prayer times haven't been set yet — check back soon.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ STATS ============================ -->
+  <section class="bg-cream-50 border-b border-cream-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+      <div data-animate>
+        <p class="stat-value">
+          <span data-counter="{{ active_members }}" data-suffix="+">0</span>
+        </p>
+        <p class="stat-label mt-1">Active Members</p>
+      </div>
+      <div data-animate>
+        <p class="stat-value">
+          GH<span data-counter="{{ raised_value }}" data-decimals="{{ raised_decimals }}" data-suffix="{{ raised_suffix }}" data-prefix="₵">0</span>
+        </p>
+        <p class="stat-label mt-1">Raised for Projects &amp; Welfare</p>
+      </div>
+      <div data-animate>
+        <p class="stat-value">
+          <span data-counter="{{ events_per_year }}" data-suffix="+">0</span>
+        </p>
+        <p class="stat-label mt-1">Programs Per Year</p>
+      </div>
+      <div data-animate>
+        <p class="stat-value">
+          <span data-counter="{{ years_active }}">0</span>
+        </p>
+        <p class="stat-label mt-1">Years Serving UTAS</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ ABOUT TEASER ============================ -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 grid lg:grid-cols-2 gap-12 items-center">
+    <div data-animate>
+      <div class="aspect-[4/3] rounded-2xl bg-forest-100 border border-forest-200 flex items-center justify-center overflow-hidden">
+        <div class="grid grid-cols-3 gap-3 p-8 w-full">
+          <div class="aspect-square rounded-xl bg-forest-700 flex items-center justify-center text-cream-50">
+            <i data-lucide="book-open" class="w-8 h-8"></i>
+          </div>
+          <div class="aspect-square rounded-xl bg-gold-500 flex items-center justify-center text-forest-900">
+            <i data-lucide="users" class="w-8 h-8"></i>
+          </div>
+          <div class="aspect-square rounded-xl bg-forest-800 flex items-center justify-center text-cream-50">
+            <i data-lucide="hand-heart" class="w-8 h-8"></i>
+          </div>
+          <div class="aspect-square rounded-xl bg-forest-600 flex items-center justify-center text-cream-50 col-span-2">
+            <i data-lucide="moon-star" class="w-9 h-9"></i>
+          </div>
+          <div class="aspect-square rounded-xl bg-cream-50 border border-forest-200 flex items-center justify-center text-forest-800">
+            <i data-lucide="calendar-heart" class="w-8 h-8"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div data-animate>
+      <p class="eyebrow">{{ blocks.home_about_teaser.eyebrow or "Who We Are" }}</p>
+      <h2 class="section-title mt-3">{{ blocks.home_about_teaser.heading or "Building community, rooted in faith" }}</h2>
+      <p class="mt-4 text-ink-700 leading-relaxed">{{ blocks.home_about_teaser.body or "GMSA UTAS brings together Muslim students, staff and alumni across campus for worship, learning and service. From daily prayer facilities and weekly halaqahs to welfare support and large-scale community events, we aim to make campus life easier and more meaningful for every Muslim student." }}</p>
+      <ul class="mt-6 space-y-3 text-ink-700">
+        {% set bullets = blocks.home_about_teaser.extra.bullets if blocks.home_about_teaser and blocks.home_about_teaser.extra else [
+          "Daily prayer facilities and weekly Jumu'ah khutbah",
+          "Halaqahs, mentorship and welfare support for members",
+          "Transparent dues, donations and project funding",
+        ] %}
+        {% for bullet in bullets %}
+        <li class="flex items-start gap-3">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-forest-600 mt-0.5"></i> {{ bullet }}
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="/about" class="btn btn-outline mt-8">Learn More About Us <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+    </div>
+  </section>
+
+  <!-- ============================ ACTIVE PROJECTS ============================ -->
+  <section class="bg-cream-50 border-y border-cream-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+      <div class="flex flex-wrap items-end justify-between gap-4 mb-10" data-animate>
+        <div>
+          <p class="eyebrow">Make a Difference</p>
+          <h2 class="section-title mt-3">Active fundraising projects</h2>
+        </div>
+        <a href="/projects" class="btn btn-outline">View All Projects <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for p in projects %}
+          <div class="card card-hover p-6 flex flex-col" data-animate>
+            <div class="flex items-center justify-between mb-4">
+              <span class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700"><i data-lucide="{{ p.icon }}" class="w-5 h-5"></i></span>
+              <span class="badge badge-green">{{ p.category }}</span>
+            </div>
+            <h3 class="font-bold text-lg text-forest-900">{{ p.title }}</h3>
+            <p class="mt-2 text-sm text-ink-700 leading-relaxed flex-1">{{ p.summary }}</p>
+            <div class="mt-5">
+              <div class="flex items-center justify-between text-sm font-semibold mb-2">
+                <span class="text-forest-800">{{ p.current|money }} raised</span>
+                <span class="text-ink-500">{{ p.progress_percent }}%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" style="width:{{ p.progress_percent }}%"></div>
+              </div>
+              <p class="field-hint mt-2">Goal: {{ p.target|money }}</p>
+            </div>
+            <a href="/donate?project={{ p.slug }}" class="btn btn-outline btn-sm mt-5">View &amp; Donate</a>
+          </div>
+        {% else %}
+          <p class="text-ink-500 col-span-3">No active projects at the moment.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ UPCOMING EVENTS ============================ -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-10" data-animate>
+      <div>
+        <p class="eyebrow">What's On</p>
+        <h2 class="section-title mt-3">Upcoming events</h2>
+      </div>
+      <a href="/events" class="btn btn-outline">View Full Calendar <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {% for e in events %}
+        <div class="card card-hover p-5" data-animate>
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-12 h-12 rounded-lg bg-forest-800 text-cream-50 flex flex-col items-center justify-center leading-none">
+              <span class="text-xs font-semibold uppercase">{{ e.date.strftime('%b') }}</span>
+              <span class="text-lg font-extrabold">{{ e.date.day }}</span>
+            </div>
+            <span class="badge badge-gold">{{ e.category }}</span>
+          </div>
+          <h3 class="font-bold text-forest-900 leading-snug">{{ e.title }}</h3>
+          <p class="mt-2 text-sm text-ink-500 flex items-center gap-1.5">
+            <i data-lucide="clock" class="w-4 h-4"></i> {{ e.time }}
+          </p>
+          <p class="mt-1 text-sm text-ink-500 flex items-center gap-1.5">
+            <i data-lucide="map-pin" class="w-4 h-4"></i> {{ e.location }}
+          </p>
+        </div>
+      {% else %}
+        <p class="text-ink-500 col-span-4">No upcoming events scheduled.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ============================ BLOG ============================ -->
+  <section class="bg-cream-50 border-y border-cream-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+      <div class="flex flex-wrap items-end justify-between gap-4 mb-10" data-animate>
+        <div>
+          <p class="eyebrow">Reflections &amp; News</p>
+          <h2 class="section-title mt-3">From the blog</h2>
+        </div>
+        <a href="/blog" class="btn btn-outline">Visit Blog <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for p in posts %}
+          <a href="/blog/{{ p.slug }}" class="card card-hover p-6 flex flex-col" data-animate>
+            <div class="flex items-center justify-between mb-4">
+              <span class="w-11 h-11 rounded-lg bg-gold-500/20 flex items-center justify-center text-gold-600"><i data-lucide="{{ p.icon }}" class="w-5 h-5"></i></span>
+              <span class="badge badge-gray">{{ p.category }}</span>
+            </div>
+            <h3 class="font-bold text-lg text-forest-900 leading-snug">{{ p.title }}</h3>
+            <p class="mt-2 text-sm text-ink-700 leading-relaxed flex-1">{{ p.excerpt }}</p>
+            <div class="mt-4 flex items-center justify-between text-xs text-ink-500">
+              <span>{{ p.date|datetimeformat }}</span>
+              <span>{{ p.read_time }} min read</span>
+            </div>
+          </a>
+        {% else %}
+          <p class="text-ink-500 col-span-3">No blog posts yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ LEADERSHIP PREVIEW ============================ -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-10" data-animate>
+      <div>
+        <p class="eyebrow">Meet The Team</p>
+        <h2 class="section-title mt-3">Current executive board</h2>
+      </div>
+      <a href="/leadership" class="btn btn-outline">Full Leadership Archive <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {% if current_board and current_board.members %}
+        {% for m in current_board.members[:4] %}
+          <div class="card card-hover p-6 text-center" data-animate>
+            {% if m.photo_url %}
+            <img src="{{ m.photo_url }}" alt="{{ m.name }}" class="w-16 h-16 rounded-full object-cover mx-auto" />
+            {% else %}
+            <div class="avatar w-16 h-16 text-lg mx-auto">{{ m.initials }}</div>
+            {% endif %}
+            <h3 class="mt-4 font-bold text-forest-900">{{ m.name }}</h3>
+            <p class="text-sm font-semibold text-gold-600">{{ m.role }}</p>
+            {% if m.phone %}<p class="mt-1 text-xs text-ink-500">{{ m.phone }}</p>{% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-ink-500 col-span-4">No current board published.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ============================ DONATE CTA ============================ -->
+  <section class="islamic-pattern bg-forest-800 text-cream-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center" data-animate>
+      <i data-lucide="hand-heart" class="w-10 h-10 text-gold-400 mx-auto mb-4"></i>
+      <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">{{ blocks.home_donate_cta.heading or "Support our mission" }}</h2>
+      <p class="mt-3 text-forest-100 max-w-2xl mx-auto leading-relaxed">{{ blocks.home_donate_cta.body or "Every contribution — big or small — helps fund welfare support, campus facilities and community programs. Donations are processed securely via Paystack." }}</p>
+      <div class="mt-8 flex flex-wrap justify-center gap-4">
+        <a href="/donate" class="btn btn-secondary btn-lg"><i data-lucide="heart-handshake" class="w-5 h-5"></i> Donate Now</a>
+        <a href="/projects" class="btn btn-outline btn-lg !border-cream-100 !text-cream-50 hover:!bg-white/10">View Project Goals</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

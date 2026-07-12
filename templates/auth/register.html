@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Create an Account — GMSA UTAS{% endblock %}
+
+{% block meta %}<meta name="description" content="Create your GMSA UTAS member account to access dues payment, event RSVPs, resources and more." />{% endblock %}
+
+{% block nav %}
+<header class="py-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <a href="/" class="inline-flex items-center gap-2.5">
+      <img src="/static/img/logo.png" alt="GMSA UTAS" class="h-9 w-9 object-contain" />
+      <span class="font-extrabold text-lg text-forest-900 tracking-tight">GMSA <span class="text-gold-600">UTAS</span></span>
+    </a>
+  </div>
+</header>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background-color: #F8F3E8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex items-center justify-center px-4 py-8 min-h-[calc(100vh-10rem)]">
+  <div class="card w-full max-w-lg p-8" data-animate>
+    <p class="eyebrow text-center">Join GMSA UTAS</p>
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-forest-900 text-center mt-2">Create your account</h1>
+    <p class="text-center text-ink-500 mt-2 text-sm">Join the community — manage dues, RSVP to events and access member resources.</p>
+
+    {% if error %}
+    <div class="mt-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium text-center" role="alert">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/register" method="POST" class="mt-8 space-y-5">
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="reg-name" class="field-label">Full Name</label>
+          <input id="reg-name" name="name" type="text" class="field-input"
+                 placeholder="Your full name" required
+                 value="{{ prefill.name | default('') }}" />
+        </div>
+        <div>
+          <label for="reg-email" class="field-label">Email Address</label>
+          <input id="reg-email" name="email" type="email" class="field-input"
+                 placeholder="you@example.com" required
+                 value="{{ prefill.email | default('') }}" />
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="reg-phone" class="field-label">Phone Number</label>
+          <input id="reg-phone" name="phone" type="tel" class="field-input"
+                 placeholder="e.g. 024 123 4567"
+                 value="{{ prefill.phone | default('') }}" />
+        </div>
+        <div>
+          <label for="reg-program" class="field-label">Program of Study</label>
+          <input id="reg-program" name="program" type="text" class="field-input"
+                 placeholder="e.g. BSc Computer Science"
+                 value="{{ prefill.program | default('') }}" />
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="reg-student-id" class="field-label">Student ID</label>
+          <input id="reg-student-id" name="student_id" type="text" inputmode="numeric"
+                 pattern="[0-9]*" class="field-input" placeholder="e.g. 20220404172" required
+                 value="{{ prefill.student_id | default('') }}" />
+        </div>
+        <div>
+          <label for="reg-program-category" class="field-label">Program Category</label>
+          <select id="reg-program-category" name="program_category" class="field-select" required>
+            <option value="" disabled {% if not prefill.program_category %}selected{% endif %}>Select category</option>
+            <option value="diploma"       {% if prefill.program_category == 'diploma'       %}selected{% endif %}>Diploma</option>
+            <option value="degree"        {% if prefill.program_category == 'degree'        %}selected{% endif %}>Degree (Bachelor's)</option>
+            <option value="postgraduate"  {% if prefill.program_category == 'postgraduate'  %}selected{% endif %}>Postgraduate Diploma</option>
+            <option value="masters"       {% if prefill.program_category == 'masters'       %}selected{% endif %}>Master's</option>
+            <option value="phd"           {% if prefill.program_category == 'phd'           %}selected{% endif %}>PhD</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label for="reg-password" class="field-label">Password</label>
+        <input id="reg-password" name="password" type="password" class="field-input"
+               placeholder="••••••••" required />
+        <p class="field-hint">At least 8 characters</p>
+      </div>
+
+      <div>
+        <label for="reg-confirm-password" class="field-label">Confirm Password</label>
+        <input id="reg-confirm-password" name="confirm_password" type="password" class="field-input"
+               placeholder="••••••••" required />
+      </div>
+
+      <label class="flex items-start gap-2 text-sm text-ink-700">
+        <input type="checkbox" id="reg-terms" name="terms" value="1" class="field-check mt-0.5" required />
+        I agree to the GMSA UTAS code of conduct and privacy policy
+      </label>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg">
+        Create Account
+      </button>
+
+    </form>
+
+    <p class="text-center text-sm text-ink-500 mt-6">
+      Already have an account?
+      <a href="/login" class="font-semibold text-forest-700 hover:text-forest-900">Sign in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+<footer class="py-6 text-center text-sm text-ink-500">
+  &copy; {{ current_year() }} GMSA UTAS. All rights reserved.
+</footer>
+{% endblock %}

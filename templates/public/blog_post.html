@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% import "partials/social_icons.html" as social_icons %}
+
+{% block title %}GMSA UTAS — {{ post.title }}{% endblock %}
+{% block meta %}<meta name="description" content="{{ post.excerpt }}" />{% endblock %}
+
+{% block content %}
+
+  <!-- ============================ ARTICLE + SIDEBAR ============================ -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 grid lg:grid-cols-3 gap-12">
+
+    <!-- Article content -->
+    <article class="lg:col-span-2">
+      <a href="/blog" class="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:text-forest-800">
+        <i data-lucide="arrow-left" class="w-4 h-4" aria-hidden="true"></i> Back to Blog
+      </a>
+
+      <div class="mt-5">
+        <span class="badge badge-gray">{{ post.category }}</span>
+      </div>
+
+      <h1 class="mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-forest-900 leading-tight">
+        {{ post.title }}
+      </h1>
+
+      <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-500 border-b border-cream-300 pb-6">
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="user" class="w-4 h-4" aria-hidden="true"></i>
+          {{ post.author_name }}
+          {% if post.author_role %}<span class="text-ink-300">· {{ post.author_role }}</span>{% endif %}
+        </span>
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="calendar" class="w-4 h-4" aria-hidden="true"></i>
+          {{ post.date | datetimeformat }}
+        </span>
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="clock" class="w-4 h-4" aria-hidden="true"></i>
+          {{ post.read_time }} min read
+        </span>
+      </div>
+
+      {% if post.image_url %}
+      <div class="mt-6">
+        <img src="{{ post.image_url }}" alt="{{ post.title }}" class="w-full h-64 sm:h-80 object-cover rounded-xl" />
+      </div>
+      {% endif %}
+
+      <!-- Content blocks -->
+      <div class="mt-6 prose prose-ink max-w-none">
+        {% if post.content is iterable and post.content is not string %}
+          {% for block in post.content %}
+            {% if block is mapping %}
+              {% if block.get('type') == 'heading' %}
+                <h2 class="mt-8 mb-3 text-xl font-bold text-forest-900">{{ block.get('text', '') }}</h2>
+              {% elif block.get('type') == 'subheading' %}
+                <h3 class="mt-6 mb-2 text-lg font-bold text-forest-900">{{ block.get('text', '') }}</h3>
+              {% elif block.get('type') == 'quote' %}
+                <blockquote class="mt-4 pl-4 border-l-4 border-gold-500 italic text-ink-600 leading-relaxed">{{ block.get('text', '') }}</blockquote>
+              {% elif block.get('type') == 'list' %}
+                <ul class="mt-4 space-y-2 text-ink-700 leading-relaxed list-disc list-inside">
+                  {% for item in block.get('items', []) %}
+                  <li>{{ item }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="mt-4 text-ink-700 leading-relaxed">{{ block.get('text', '') }}</p>
+              {% endif %}
+            {% else %}
+              <p class="mt-4 text-ink-700 leading-relaxed">{{ block }}</p>
+            {% endif %}
+          {% endfor %}
+        {% elif post.content %}
+          <p class="mt-4 text-ink-700 leading-relaxed">{{ post.content }}</p>
+        {% endif %}
+      </div>
+
+      {% if post.content_ar %}
+      <div class="mt-8 pt-6 border-t border-cream-300">
+        <p class="eyebrow mb-3">Arabic</p>
+        <div class="prose prose-ink max-w-none text-right" dir="rtl" lang="ar">
+          {% for para in post.content_ar %}
+          <p class="mt-4 text-ink-700 leading-relaxed">{{ para }}</p>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ============================ SHARE ROW ============================ -->
+      <div class="mt-10 pt-6 border-t border-cream-300">
+        <p class="eyebrow mb-3">Share this post</p>
+        <div class="flex flex-wrap gap-3">
+          <a id="share-facebook" href="https://www.facebook.com/sharer/sharer.php?u={{ request.url }}"
+             target="_blank" rel="noopener noreferrer"
+             class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors"
+             aria-label="Share on Facebook">
+            {{ social_icons.facebook() }}
+          </a>
+          <a id="share-twitter"
+             href="https://twitter.com/intent/tweet?url={{ request.url | urlencode }}&text={{ post.title | urlencode }}"
+             target="_blank" rel="noopener noreferrer"
+             class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors"
+             aria-label="Share on Twitter / X">
+            {{ social_icons.twitter() }}
+          </a>
+          <a id="share-whatsapp"
+             href="https://wa.me/?text={{ (post.title ~ ' — ' ~ request.url) | urlencode }}"
+             target="_blank" rel="noopener noreferrer"
+             class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors"
+             aria-label="Share on WhatsApp">
+            <i data-lucide="message-circle" class="w-5 h-5" aria-hidden="true"></i>
+          </a>
+          <button id="share-copy" type="button"
+                  onclick="navigator.clipboard.writeText(window.location.href).then(function(){ /* toast */ })"
+                  class="w-11 h-11 rounded-lg bg-forest-50 flex items-center justify-center text-forest-700 hover:bg-forest-100 transition-colors"
+                  aria-label="Copy link to this post">
+            <i data-lucide="link" class="w-5 h-5" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </article>
+
+    <!-- Sidebar: More Posts -->
+    <aside class="lg:col-span-1">
+      <div class="card p-6 sm:p-8 lg:sticky lg:top-24">
+        <p class="eyebrow">More Posts</p>
+        <h2 class="font-bold text-lg text-forest-900 mt-2 mb-4">Continue reading</h2>
+        {% if other_posts %}
+        <div class="space-y-3">
+          {% for op in other_posts %}
+          <a href="/blog/{{ op.slug }}" class="block rounded-lg border border-cream-300 p-4 hover:bg-cream-100 transition-colors">
+            <p class="font-semibold text-sm text-forest-900 leading-snug">{{ op.title }}</p>
+            <p class="mt-1 text-xs text-ink-500">{{ op.date | datetimeformat }}</p>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-ink-500">No other posts yet.</p>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+
+{% endblock %}

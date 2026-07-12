@@ -1,0 +1,215 @@
+{% extends "member_base.html" %}
+
+{% block title %}Dues &amp; Payments{% endblock %}
+{% block page_title %}Dues &amp; Payments{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
+<div x-data="{ momoOpen: false, momoDueId: null, momoAmount: '' }">
+
+<!-- Current status -->
+{% if dues_list %}
+  {% set current_due = dues_list[0] %}
+  <div class="card p-6 mb-6" data-animate>
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h2 class="font-bold text-forest-900 text-lg flex items-center gap-2">
+          <i data-lucide="credit-card" class="w-5 h-5 text-forest-600"></i> Current Status
+        </h2>
+        <p class="text-sm text-ink-500 mt-1">{{ current_due.semester }} semester dues</p>
+      </div>
+      {% if current_due.status == 'paid' %}
+        <span class="badge badge-green">Paid</span>
+      {% elif current_due.status == 'pending' %}
+        <span class="badge badge-gold">Pending Verification</span>
+      {% else %}
+        <span class="badge badge-red">Unpaid</span>
+      {% endif %}
+    </div>
+
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-4 bg-cream-100 border border-cream-300 rounded-lg p-4">
+      <div>
+        <p class="text-sm text-ink-500">Amount Due</p>
+        <p class="text-2xl font-extrabold text-forest-900">{{ current_due.amount | money }}</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% if current_due.status == 'paid' %}
+          <a href="/member/dues/{{ current_due.id }}/receipt" class="btn btn-outline">
+            <i data-lucide="download" class="w-4 h-4"></i> Download Receipt
+          </a>
+        {% elif current_due.status == 'pending' %}
+          <p class="text-sm text-ink-500 flex items-center gap-2">
+            <i data-lucide="clock" class="w-4 h-4 text-gold-600"></i> Your payment proof is being verified by an admin.
+          </p>
+        {% else %}
+          <button class="btn btn-secondary" onclick="initDuesPayment({{ current_due.id }})">
+            <i data-lucide="wallet" class="w-4 h-4"></i>
+            Pay via Paystack
+          </button>
+          <button class="btn btn-outline" @click="momoOpen = true; momoDueId = {{ current_due.id }}; momoAmount = '{{ current_due.amount | money }}'">
+            <i data-lucide="smartphone" class="w-4 h-4"></i> Pay via MoMo
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="card p-6 mb-6" data-animate>
+    <div class="flex items-start gap-4">
+      <i data-lucide="credit-card" class="w-5 h-5 text-forest-600 mt-0.5 shrink-0"></i>
+      <div>
+        <h2 class="font-bold text-forest-900 text-lg">Current Status</h2>
+        <p class="text-sm text-ink-500 mt-1">No dues records found for your account.</p>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Payment history -->
+<div class="card p-6 mb-6" data-animate>
+  <h2 class="font-bold text-forest-900 text-lg flex items-center gap-2 mb-4">
+    <i data-lucide="history" class="w-5 h-5 text-forest-600"></i> Payment History
+  </h2>
+  <div class="table-wrap">
+    <table class="table-base table-collapse">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Reference</th>
+          <th>Status</th>
+          <th class="text-right">Amount</th>
+          <th class="text-right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if dues_list %}
+          {% for due in dues_list %}
+          <tr>
+            <td data-label="Date">
+              {% if due.paid_at %}{{ due.paid_at | datetimeformat }}{% else %}—{% endif %}
+            </td>
+            <td data-label="Description">{{ due.semester }} Semester Dues</td>
+            <td data-label="Reference">{{ due.transaction_id or '—' }}</td>
+            <td data-label="Status">
+              {% if due.status == 'paid' %}
+                <span class="badge badge-green">Paid</span>
+              {% elif due.status == 'pending' %}
+                <span class="badge badge-gold">Pending Verification</span>
+              {% else %}
+                <span class="badge badge-red">Unpaid</span>
+              {% endif %}
+            </td>
+            <td data-label="Amount" class="text-right font-semibold">{{ due.amount | money }}</td>
+            <td data-label="Action" class="text-right">
+              {% if due.status == 'paid' %}
+                <a href="/member/dues/{{ due.id }}/receipt" class="btn btn-outline btn-sm">
+                  <i data-lucide="receipt" class="w-3.5 h-3.5"></i> Receipt
+                </a>
+              {% elif due.status == 'pending' %}
+                <span class="field-hint">Awaiting verification</span>
+              {% else %}
+                <div class="flex justify-end gap-2">
+                  <button class="btn btn-secondary btn-sm" onclick="initDuesPayment({{ due.id }})">
+                    <i data-lucide="wallet" class="w-3.5 h-3.5"></i> Paystack
+                  </button>
+                  <button class="btn btn-outline btn-sm" @click="momoOpen = true; momoDueId = {{ due.id }}; momoAmount = '{{ due.amount | money }}'">
+                    <i data-lucide="smartphone" class="w-3.5 h-3.5"></i> MoMo
+                  </button>
+                </div>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-ink-500 py-4">No payment history yet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Transparency callout -->
+<div class="card p-6 bg-forest-50" data-animate>
+  <p class="text-sm text-ink-700 flex items-start gap-2">
+    <i data-lucide="info" class="w-5 h-5 text-forest-600 shrink-0 mt-0.5"></i>
+    <span>Curious where your dues go? <a href="/blog/why-we-pay-dues" class="font-semibold text-forest-800 hover:text-forest-900 underline">Read our transparency breakdown</a>.</span>
+  </p>
+</div>
+
+<!-- MoMo payment modal -->
+<div x-show="momoOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="momoOpen = false">
+  <div class="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" @click.stop>
+    <h3 class="font-bold text-lg text-forest-900 mb-1">Pay via Mobile Money</h3>
+    <p class="text-sm text-ink-500 mb-4">Send <span class="font-semibold" x-text="momoAmount"></span> to the number below, then upload your proof of payment for verification.</p>
+
+    <div class="bg-cream-100 border border-cream-300 rounded-lg p-4 mb-5">
+      {% if org and org.momo_number %}
+        <p class="text-sm text-ink-500">MoMo Number</p>
+        <p class="text-lg font-extrabold text-forest-900">{{ org.momo_number }}</p>
+        <p class="text-sm text-ink-500 mt-2">Registered Name</p>
+        <p class="font-semibold text-forest-900">{{ org.momo_name or 'GMSA UTAS' }}</p>
+      {% else %}
+        <p class="text-sm text-ink-500">MoMo details haven't been set up yet. Please contact an executive.</p>
+      {% endif %}
+    </div>
+
+    <form method="post" :action="'/member/dues/' + momoDueId + '/pay-momo'" enctype="multipart/form-data" class="space-y-4">
+      <div>
+        <label class="field-label">Proof of Payment (screenshot or PDF)</label>
+        <input type="file" name="proof" accept="image/*,.pdf" class="field-input" required />
+      </div>
+      <div>
+        <label class="field-label">Note <span class="text-ink-400 font-normal">(optional)</span></label>
+        <input type="text" name="note" class="field-input" placeholder="e.g. Transaction ID from MoMo SMS" />
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" @click="momoOpen = false" class="btn btn-outline">Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit Proof</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  async function initDuesPayment(dueId) {
+    var btn = event.currentTarget;
+    if (btn) btn.disabled = true;
+    try {
+      var res = await fetch('/member/dues/' + dueId + '/pay-init', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      var data = await res.json();
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        if (window.showToast) window.showToast(data.error || 'Failed to initialize payment');
+        else alert(data.error || 'Failed to initialize payment');
+      }
+    } catch (e) {
+      if (window.showToast) window.showToast('Network error — please try again');
+      else alert('Network error — please try again');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide) window.lucide.createIcons();
+  });
+</script>
+{% endblock %}
