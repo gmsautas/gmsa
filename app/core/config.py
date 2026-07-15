@@ -31,14 +31,26 @@ class Settings(BaseSettings):
         elif value.startswith("postgresql://"):
             value = "postgresql+asyncpg://" + value[len("postgresql://") :]
 
-        # Those same hosts also hand back a libpq-style ?sslmode=require query
-        # param, but asyncpg's connect() only understands ?ssl=<value> — as-is,
-        # this crashes with "connect() got an unexpected keyword argument
-        # 'sslmode'" the moment anything tries to open a connection.
+        # Those same hosts also hand back libpq-style query params asyncpg's
+        # connect() doesn't accept as keyword arguments -- as-is, these crash
+        # with "connect() got an unexpected keyword argument '<name>'" the
+        # moment anything tries to open a connection (this has now happened
+        # in production for both params below, not just hypothetically).
         parts = urlsplit(value)
         query = dict(parse_qsl(parts.query))
+        changed = False
         if "sslmode" in query:
+            # asyncpg's equivalent is spelled ?ssl=<value> instead.
             query["ssl"] = query.pop("sslmode")
+            changed = True
+        if "channel_binding" in query:
+            # Neon's dashboard connection string includes ?channel_binding=require
+            # for SCRAM channel binding -- asyncpg negotiates that automatically
+            # over an SSL connection and has no parameter for it at all, so this
+            # one is just dropped rather than renamed.
+            query.pop("channel_binding")
+            changed = True
+        if changed:
             value = urlunsplit(parts._replace(query=urlencode(query)))
 
         return value
