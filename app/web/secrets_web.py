@@ -25,6 +25,18 @@ MANAGED_KEYS = {
         "(this page only manages the key, not which provider is active — see the Email & SMS section "
         "of /admin/settings).",
     ),
+    "mailersend_api_key": (
+        "MailerSend API Key",
+        "Used to send transactional email instead of Resend when the active email provider is "
+        "\"mailersend\", or as a fallback step when it's \"auto\" (this page only manages the key, not "
+        "which provider is active — see the Email & SMS section of /admin/settings).",
+    ),
+    "mailtrap_api_key": (
+        "Mailtrap API Key",
+        "Used to send transactional email instead of Resend when the active email provider is "
+        "\"mailtrap\", or as a fallback step when it's \"auto\" (this page only manages the key, not "
+        "which provider is active — see the Email & SMS section of /admin/settings).",
+    ),
     "ses_access_key_id": (
         "Amazon SES Access Key ID",
         "Used to send transactional email via Amazon SES's API when the active email provider is \"ses\" "

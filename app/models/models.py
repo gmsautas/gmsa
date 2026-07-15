@@ -441,6 +441,8 @@ class OrgSettings(Base, TimestampMixin):
     email_provider: Mapped[str | None] = mapped_column(String(20), default=None)
     resend_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
     brevo_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
+    mailersend_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
+    mailtrap_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
     ses_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
     ses_region: Mapped[str | None] = mapped_column(String(40), default=None)
     arkesel_sender_id: Mapped[str | None] = mapped_column(String(20), default=None)

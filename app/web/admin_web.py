@@ -1854,6 +1854,8 @@ async def update_settings_email(
     email_provider: str = Form(""),
     resend_from_email: str = Form(""),
     brevo_from_email: str = Form(""),
+    mailersend_from_email: str = Form(""),
+    mailtrap_from_email: str = Form(""),
     ses_from_email: str = Form(""),
     ses_region: str = Form(""),
     arkesel_sender_id: str = Form(""),
@@ -1878,6 +1880,8 @@ async def update_settings_email(
     org.email_provider = email_provider.strip().lower() or None
     org.resend_from_email = resend_from_email.strip() or None
     org.brevo_from_email = brevo_from_email.strip() or None
+    org.mailersend_from_email = mailersend_from_email.strip() or None
+    org.mailtrap_from_email = mailtrap_from_email.strip() or None
     org.ses_from_email = ses_from_email.strip() or None
     org.ses_region = ses_region.strip() or None
     org.arkesel_sender_id = arkesel_sender_id.strip() or None

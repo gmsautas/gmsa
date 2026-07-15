@@ -51,12 +51,17 @@ class Settings(BaseSettings):
     arkesel_sender_id: str = "GMSA-UTAS"
 
     # EMAIL_PROVIDER selects which backend app.services.resend_client.send_email
-    # dispatches to: "resend" (default), "brevo", "ses", or "gmail".
-    # Resend/Brevo/SES are all REST-API-based (no SMTP), so none of them are
-    # affected by hosts that block outbound SMTP ports (Render, etc.). "gmail"
+    # dispatches to: "resend" (default), "brevo", "mailersend", "mailtrap",
+    # "ses", "auto", or "gmail".
+    # Resend/Brevo/MailerSend/Mailtrap/SES are all REST-API-based (no SMTP), so
+    # none of them are affected by hosts that block outbound SMTP ports.
+    # "auto" chains Brevo -> MailerSend -> Mailtrap in that order (Brevo's cap
+    # is daily so it's worth draining first; MailerSend/Mailtrap are monthly),
+    # falling over to the next provider on any failure -- a free-tier-stacking
+    # strategy for volume beyond any single provider's free quota. "gmail"
     # uses real SMTP and only works from a network that doesn't block ports
-    # 587/465 — i.e. NOT from Render/Railway, only from a local machine — see
-    # scripts/local_gmail_import.py.
+    # 587/465 — i.e. NOT from a hosted deployment, only from a local machine —
+    # see scripts/local_gmail_import.py.
     # NOTE: this env var is only the fallback default now — the active value
     # can be overridden at runtime via /admin/settings' Email & SMS section
     # (see app.services.org_settings_cache), no redeploy required.
@@ -67,6 +72,18 @@ class Settings(BaseSettings):
 
     brevo_api_key: str = ""
     brevo_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
+
+    # MailerSend — 3,000 emails/month free, no daily cap (so the full monthly
+    # allowance can be used in a single day if needed). from_email must be on
+    # a domain verified in the MailerSend dashboard.
+    mailersend_api_key: str = ""
+    mailersend_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
+
+    # Mailtrap — 1,000 emails/month free via their Sending API (not the
+    # sandbox/testing inbox). from_email must be on a domain verified in the
+    # Mailtrap dashboard.
+    mailtrap_api_key: str = ""
+    mailtrap_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
 
     # Amazon SES — sent via SES's HTTPS API (boto3), not its SMTP interface,
     # so it's unaffected by SMTP port blocks on any host. ses_from_email must

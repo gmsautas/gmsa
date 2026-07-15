@@ -1,13 +1,24 @@
-"""Transactional email, sent via Resend, Brevo, or Gmail SMTP depending on
-EMAIL_PROVIDER. Resend/Brevo are REST APIs (no SMTP), so neither is affected
-by hosts that block outbound SMTP ports. Gmail uses real SMTP and only works
-from a network that doesn't block ports 587/465 — see
-scripts/local_gmail_import.py for the local-only bulk-send flow that uses it.
-Kept as one entry point (`send_email`) so callers don't need to know which
-provider is actually configured.
+"""Transactional email, sent via Resend, Brevo, MailerSend, Mailtrap, Amazon
+SES, or Gmail SMTP depending on EMAIL_PROVIDER. All but Gmail are REST APIs
+(no SMTP), so none of them are affected by hosts that block outbound SMTP
+ports. Gmail uses real SMTP and only works from a network that doesn't block
+ports 587/465 — see scripts/local_gmail_import.py for the local-only
+bulk-send flow that uses it. Kept as one entry point (`send_email`) so
+callers don't need to know which provider is actually configured.
+
+EMAIL_PROVIDER="auto" chains Brevo -> MailerSend -> Mailtrap (see
+_send_via_auto_fallback), stacking each provider's free-tier quota on top of
+the others: on any failure (including a quota-exceeded rejection) it moves to
+the next provider in that list rather than raising immediately. This is a
+free-tier-maximizing strategy, not a high-reliability one -- each individual
+provider's HTTPS API can still be flaky, so "auto" only helps once one
+provider's quota is genuinely exhausted, not against a transient outage of
+all three at once.
 
 Docs: https://resend.com/docs/api-reference/emails/send-email
       https://developers.brevo.com/reference/sendtransacemail
+      https://developers.mailersend.com/api/v1/email.html
+      https://docs.mailtrap.io/developers/email-sending/transactional
 """
 
 import asyncio
@@ -32,6 +43,12 @@ logger = logging.getLogger(__name__)
 
 RESEND_URL = "https://api.resend.com/emails"
 BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+MAILERSEND_URL = "https://api.mailersend.com/v1/email"
+MAILTRAP_URL = "https://send.api.mailtrap.io/api/send"
+# Provider names tried in order for EMAIL_PROVIDER="auto", chosen so the
+# daily-capped provider (Brevo, resets every 24h) is drained first and the
+# monthly-capped ones (MailerSend, Mailtrap) are only spent as backup.
+AUTO_FALLBACK_ORDER = ("brevo", "mailersend", "mailtrap")
 GMAIL_SMTP_HOST = "smtp.gmail.com"
 GMAIL_SMTP_PORT = 587
 # Gmail throttles/flags bursts even under the daily cap — keep a floor between
@@ -56,6 +73,12 @@ async def send_email(*, to: list[str], subject: str, html: str) -> dict:
     provider = (org_settings_cache.get("email_provider") or settings.email_provider).strip().lower()
     if provider == "brevo":
         return await _send_via_brevo(to=to, subject=subject, html=html)
+    if provider == "mailersend":
+        return await _send_via_mailersend(to=to, subject=subject, html=html)
+    if provider == "mailtrap":
+        return await _send_via_mailtrap(to=to, subject=subject, html=html)
+    if provider == "auto":
+        return await _send_via_auto_fallback(to=to, subject=subject, html=html)
     if provider == "ses":
         return await _send_via_ses(to=to, subject=subject, html=html)
     if provider == "gmail":
@@ -141,6 +164,127 @@ async def _send_via_brevo(*, to: list[str], subject: str, html: str) -> dict:
         logger.error("Brevo send failed (status %s): %s", response.status_code, data)
         raise ResendError(data.get("message", "Failed to send email"))
     return data
+
+
+async def _send_via_mailersend(*, to: list[str], subject: str, html: str) -> dict:
+    api_key = secrets_store.get_secret("mailersend_api_key", settings.mailersend_api_key)
+    if not api_key:
+        logger.error("MAILERSEND_API_KEY is not configured")
+        raise ResendError("MAILERSEND_API_KEY is not configured")
+
+    sender_name, sender_email = parseaddr(
+        org_settings_cache.get("mailersend_from_email") or settings.mailersend_from_email
+    )
+    from_field = {"email": sender_email}
+    if sender_name:
+        from_field["name"] = sender_name
+
+    payload = {
+        "from": from_field,
+        "to": [{"email": addr} for addr in to],
+        "subject": subject,
+        "html": html,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            response = await client.post(MAILERSEND_URL, json=payload, headers=headers)
+        except httpx.HTTPError as err:
+            logger.error("Could not reach MailerSend: %s", err)
+            raise ResendError(f"Could not reach MailerSend: {err}") from err
+
+    # Success is 202 Accepted with an empty body (no JSON to parse) -- except
+    # when every recipient is on MailerSend's suppression list, which still
+    # comes back as 202 but with a "warnings" body saying nothing was actually
+    # sent. Treat that case as a failure too, so EMAIL_PROVIDER="auto" moves on
+    # to the next provider instead of reporting a silent non-delivery as OK.
+    if response.is_success:
+        try:
+            data = response.json()
+        except ValueError:
+            return {"provider": "mailersend", "to": to, "message_id": response.headers.get("x-message-id")}
+        warnings = data.get("warnings") or []
+        if any(w.get("type") == "ALL_SUPPRESSED" for w in warnings):
+            logger.error("MailerSend suppressed every recipient: %s", warnings)
+            raise ResendError(f"MailerSend suppressed every recipient: {warnings}")
+        return {"provider": "mailersend", "to": to, "message_id": response.headers.get("x-message-id")}
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+    logger.error("MailerSend send failed (status %s): %s", response.status_code, data or response.text)
+    raise ResendError(data.get("message") or f"MailerSend send failed (status {response.status_code})")
+
+
+async def _send_via_mailtrap(*, to: list[str], subject: str, html: str) -> dict:
+    api_key = secrets_store.get_secret("mailtrap_api_key", settings.mailtrap_api_key)
+    if not api_key:
+        logger.error("MAILTRAP_API_KEY is not configured")
+        raise ResendError("MAILTRAP_API_KEY is not configured")
+
+    sender_name, sender_email = parseaddr(
+        org_settings_cache.get("mailtrap_from_email") or settings.mailtrap_from_email
+    )
+    sender = {"email": sender_email}
+    if sender_name:
+        sender["name"] = sender_name
+
+    payload = {
+        "from": sender,
+        "to": [{"email": addr} for addr in to],
+        "subject": subject,
+        "html": html,
+    }
+    # "Api-Token" is Mailtrap's own documented header for this endpoint
+    # (distinct from an OAuth-style Bearer token).
+    headers = {
+        "Api-Token": api_key,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            response = await client.post(MAILTRAP_URL, json=payload, headers=headers)
+        except httpx.HTTPError as err:
+            logger.error("Could not reach Mailtrap: %s", err)
+            raise ResendError(f"Could not reach Mailtrap: {err}") from err
+    try:
+        data = response.json()
+    except ValueError as err:
+        logger.error("Unexpected response from Mailtrap (status %s)", response.status_code)
+        raise ResendError(
+            f"Unexpected response from Mailtrap (status {response.status_code})"
+        ) from err
+    if not response.is_success or not data.get("success", True):
+        logger.error("Mailtrap send failed (status %s): %s", response.status_code, data)
+        raise ResendError("; ".join(data.get("errors", [])) or "Failed to send email")
+    return data
+
+
+async def _send_via_auto_fallback(*, to: list[str], subject: str, html: str) -> dict:
+    senders = {
+        "brevo": _send_via_brevo,
+        "mailersend": _send_via_mailersend,
+        "mailtrap": _send_via_mailtrap,
+    }
+    errors: list[str] = []
+    for name in AUTO_FALLBACK_ORDER:
+        try:
+            result = await senders[name](to=to, subject=subject, html=html)
+        except ResendError as err:
+            errors.append(f"{name}: {err}")
+            continue
+        if errors:
+            logger.warning(
+                "Sent via %s after %d provider(s) failed: %s", name, len(errors), "; ".join(errors)
+            )
+        return result
+    raise ResendError("All configured providers failed: " + "; ".join(errors))
 
 
 def _send_via_ses_sync(

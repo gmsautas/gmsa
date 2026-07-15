@@ -168,6 +168,9 @@
           </option>
           <option value="resend" {% if org.email_provider == 'resend' %}selected{% endif %}>Resend</option>
           <option value="brevo" {% if org.email_provider == 'brevo' %}selected{% endif %}>Brevo</option>
+          <option value="mailersend" {% if org.email_provider == 'mailersend' %}selected{% endif %}>MailerSend</option>
+          <option value="mailtrap" {% if org.email_provider == 'mailtrap' %}selected{% endif %}>Mailtrap</option>
+          <option value="auto" {% if org.email_provider == 'auto' %}selected{% endif %}>Auto (Brevo &rarr; MailerSend &rarr; Mailtrap fallback)</option>
           <option value="ses" {% if org.email_provider == 'ses' %}selected{% endif %}>Amazon SES</option>
         </select>
       </div>
@@ -182,6 +185,14 @@
       <div>
         <label class="field-label">Brevo From Email</label>
         <input name="brevo_from_email" type="text" class="field-input" placeholder="{{ env_settings.brevo_from_email }}" value="{{ org.brevo_from_email or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">MailerSend From Email</label>
+        <input name="mailersend_from_email" type="text" class="field-input" placeholder="{{ env_settings.mailersend_from_email }}" value="{{ org.mailersend_from_email or '' }}" />
+      </div>
+      <div>
+        <label class="field-label">Mailtrap From Email</label>
+        <input name="mailtrap_from_email" type="text" class="field-input" placeholder="{{ env_settings.mailtrap_from_email }}" value="{{ org.mailtrap_from_email or '' }}" />
       </div>
       <div>
         <label class="field-label">Amazon SES From Email</label>

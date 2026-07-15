@@ -27,6 +27,8 @@ _FIELDS = (
     "email_provider",
     "resend_from_email",
     "brevo_from_email",
+    "mailersend_from_email",
+    "mailtrap_from_email",
     "ses_from_email",
     "ses_region",
     "arkesel_sender_id",
