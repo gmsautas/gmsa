@@ -51,64 +51,39 @@ class Settings(BaseSettings):
     arkesel_sender_id: str = "GMSA-UTAS"
 
     # EMAIL_PROVIDER selects which backend app.services.resend_client.send_email
-    # dispatches to: "resend" (default), "brevo", "mailersend", "mailtrap",
-    # "ses", "auto", or "gmail".
-    # Resend/Brevo/MailerSend/Mailtrap/SES are all REST-API-based (no SMTP), so
-    # none of them are affected by hosts that block outbound SMTP ports.
-    # "auto" chains Brevo -> MailerSend -> Mailtrap in that order (Brevo's cap
-    # is daily so it's worth draining first; MailerSend/Mailtrap are monthly),
-    # falling over to the next provider on any failure -- a free-tier-stacking
-    # strategy for volume beyond any single provider's free quota. "gmail"
-    # uses real SMTP and only works from a network that doesn't block ports
-    # 587/465 — i.e. NOT from a hosted deployment, only from a local machine —
-    # see scripts/local_gmail_import.py.
+    # dispatches to: "brevo" (default) or "gmail".
+    # Brevo is a REST API (no SMTP), so it's unaffected by hosts that block
+    # outbound SMTP ports -- it's the provider the live hosted app actually
+    # uses. "gmail" uses real SMTP and only works from a network that doesn't
+    # block ports 587/465 — i.e. NOT from a hosted deployment, only from a
+    # local machine — see scripts/local_gmail_import.py.
     # NOTE: this env var is only the fallback default now — the active value
     # can be overridden at runtime via /admin/settings' Email & SMS section
     # (see app.services.org_settings_cache), no redeploy required.
-    email_provider: str = "resend"
-
-    resend_api_key: str = ""
-    resend_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
+    email_provider: str = "brevo"
 
     brevo_api_key: str = ""
     brevo_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
 
-    # MailerSend — 3,000 emails/month free, no daily cap (so the full monthly
-    # allowance can be used in a single day if needed). from_email must be on
-    # a domain verified in the MailerSend dashboard.
-    mailersend_api_key: str = ""
-    mailersend_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
-
-    # Mailtrap — 1,000 emails/month free via their Sending API (not the
-    # sandbox/testing inbox). from_email must be on a domain verified in the
-    # Mailtrap dashboard.
-    mailtrap_api_key: str = ""
-    mailtrap_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
-
-    # Amazon SES — sent via SES's HTTPS API (boto3), not its SMTP interface,
-    # so it's unaffected by SMTP port blocks on any host. ses_from_email must
-    # be on a domain/subdomain verified in the SES console, and the account
-    # must have production access (not sandboxed) to send to unverified
-    # recipients — see AWS Console > SES > Account dashboard.
-    ses_region: str = "us-east-1"
-    ses_access_key_id: str = ""
-    ses_secret_access_key: str = ""
-    ses_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
-
-    # Gmail SMTP — local-only bulk-send fallback (see scripts/local_gmail_import.py).
-    # Up to 3 accounts can be configured (account 1 is required, 2 and 3 are
+    # Gmail SMTP — local-only bulk-send path (see scripts/local_gmail_import.py).
+    # Up to 5 accounts can be configured (account 1 is required, 2-5 are
     # optional); resend_client drains account 1 completely (up to
-    # gmail_daily_cap_per_account) before ever touching account 2, then
-    # account 3 -- never round-robin -- to raise the effective daily ceiling
-    # beyond one account's limit. Each *_user must be the full @gmail.com
-    # address; each *_app_password is a 16-char App Password (Google Account
-    # > Security > App Passwords), not the account's real login password.
+    # gmail_daily_cap_per_account) before ever touching account 2, then so on
+    # through account 5 -- never round-robin -- to raise the effective daily
+    # ceiling beyond one account's limit. Each *_user must be the full
+    # @gmail.com address; each *_app_password is a 16-char App Password
+    # (Google Account > Security > App Passwords), not the account's real
+    # login password.
     gmail_smtp_user: str = ""
     gmail_smtp_app_password: str = ""
     gmail_smtp_user_2: str = ""
     gmail_smtp_app_password_2: str = ""
     gmail_smtp_user_3: str = ""
     gmail_smtp_app_password_3: str = ""
+    gmail_smtp_user_4: str = ""
+    gmail_smtp_app_password_4: str = ""
+    gmail_smtp_user_5: str = ""
+    gmail_smtp_app_password_5: str = ""
     gmail_from_name: str = "GMSA UTAS"
     # Conservative per-account daily send ceiling — kept comfortably under
     # Google's own consumer-account limit to avoid tripping abuse detection.

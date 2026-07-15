@@ -25,12 +25,7 @@ from app.models.models import OrgSettings
 # on the settings page and don't need a hot-path cache.
 _FIELDS = (
     "email_provider",
-    "resend_from_email",
     "brevo_from_email",
-    "mailersend_from_email",
-    "mailtrap_from_email",
-    "ses_from_email",
-    "ses_region",
     "arkesel_sender_id",
     "dues_amount_ghs",
     "dues_amount_level_100",

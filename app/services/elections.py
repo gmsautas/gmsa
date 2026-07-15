@@ -16,7 +16,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.models.models import Election, Position, User, Vote, Voter, VoterToken
-from app.services import email_failures, member_provisioning, resend_client
+from app.services import academic, email_failures, member_provisioning, resend_client
 
 
 class ElectionError(Exception):
@@ -255,6 +255,8 @@ async def import_register(
         email = str(row.get("email") or "").strip().lower()
         name = str(row.get("name") or "").strip()
         phone = member_provisioning.normalize_phone(str(row.get("phone") or ""))
+        program = str(row.get("program") or "").strip()
+        program_category = str(row.get("program_category") or "").strip().lower()
 
         if not student_id or not email:
             result.conflicts.append({"row": row, "reason": "Missing student_id or email"})
@@ -289,6 +291,11 @@ async def import_register(
             result.created_users += 1
             if phone:
                 user.phone = phone
+            if program:
+                user.program = program
+            if program_category in academic.PROGRAM_CATEGORIES:
+                user.program_category = program_category
+                user.grad_year = academic.graduation_year(student_id, program_category)
         else:
             result.linked_users += 1
 

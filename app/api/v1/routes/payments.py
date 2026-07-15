@@ -13,7 +13,7 @@ from app.schemas.finance import (
     PaymentInitResponse,
     PaymentVerifyResponse,
 )
-from app.services import ledger, org_settings_cache, paystack
+from app.services import academic, ledger, paystack
 from app.services.audience import current_semester_label
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -77,7 +77,11 @@ async def initialize_payment(
 
         if dues_record is None:
             dues_record = DuesRecord(
-                amount=org_settings_cache.get("dues_amount_ghs") or settings.dues_amount_ghs,
+                # Tier-aware (level_100/continuing/final_year), same as
+                # /admin/dues and /me/dues -- this was previously the flat
+                # dues_amount_ghs, silently ignoring the per-tier amounts an
+                # admin sets on /admin/settings' Dues Amounts section.
+                amount=academic.effective_dues_amount(user),
                 currency="GHS",
                 status="unpaid",
                 semester=semester,

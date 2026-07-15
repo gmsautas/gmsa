@@ -166,41 +166,22 @@
           <option value="" {% if not org.email_provider %}selected{% endif %}>
             Use environment default ({{ env_settings.email_provider }})
           </option>
-          <option value="resend" {% if org.email_provider == 'resend' %}selected{% endif %}>Resend</option>
           <option value="brevo" {% if org.email_provider == 'brevo' %}selected{% endif %}>Brevo</option>
-          <option value="mailersend" {% if org.email_provider == 'mailersend' %}selected{% endif %}>MailerSend</option>
-          <option value="mailtrap" {% if org.email_provider == 'mailtrap' %}selected{% endif %}>Mailtrap</option>
-          <option value="auto" {% if org.email_provider == 'auto' %}selected{% endif %}>Auto (Brevo &rarr; MailerSend &rarr; Mailtrap fallback)</option>
-          <option value="ses" {% if org.email_provider == 'ses' %}selected{% endif %}>Amazon SES</option>
         </select>
+        <p class="field-hint mt-1">
+          "Gmail" isn't offered here on purpose — it's a local-only SMTP path for
+          <code>scripts/local_gmail_import.py</code>'s bulk voter-register import, set via that
+          script's own env file, never via this live site (Gmail SMTP doesn't work reliably from a
+          hosted deployment).
+        </p>
       </div>
       <div>
         <label class="field-label">Arkesel Sender ID</label>
         <input name="arkesel_sender_id" type="text" class="field-input" placeholder="{{ env_settings.arkesel_sender_id }}" value="{{ org.arkesel_sender_id or '' }}" />
       </div>
       <div>
-        <label class="field-label">Resend From Email</label>
-        <input name="resend_from_email" type="text" class="field-input" placeholder="{{ env_settings.resend_from_email }}" value="{{ org.resend_from_email or '' }}" />
-      </div>
-      <div>
         <label class="field-label">Brevo From Email</label>
         <input name="brevo_from_email" type="text" class="field-input" placeholder="{{ env_settings.brevo_from_email }}" value="{{ org.brevo_from_email or '' }}" />
-      </div>
-      <div>
-        <label class="field-label">MailerSend From Email</label>
-        <input name="mailersend_from_email" type="text" class="field-input" placeholder="{{ env_settings.mailersend_from_email }}" value="{{ org.mailersend_from_email or '' }}" />
-      </div>
-      <div>
-        <label class="field-label">Mailtrap From Email</label>
-        <input name="mailtrap_from_email" type="text" class="field-input" placeholder="{{ env_settings.mailtrap_from_email }}" value="{{ org.mailtrap_from_email or '' }}" />
-      </div>
-      <div>
-        <label class="field-label">Amazon SES From Email</label>
-        <input name="ses_from_email" type="text" class="field-input" placeholder="{{ env_settings.ses_from_email }}" value="{{ org.ses_from_email or '' }}" />
-      </div>
-      <div>
-        <label class="field-label">Amazon SES Region</label>
-        <input name="ses_region" type="text" class="field-input" placeholder="{{ env_settings.ses_region }}" value="{{ org.ses_region or '' }}" />
       </div>
     </div>
   </div>

@@ -438,13 +438,13 @@ class OrgSettings(Base, TimestampMixin):
     # env var + redeploy to change (see app.services.org_settings_cache).
     # None means "fall back to the Settings env var default" — leaving these
     # untouched preserves today's behavior exactly.
+    # NOTE: resend_from_email/ses_from_email/ses_region columns still exist in
+    # the DB (added by b2c3d4e5f6a7, already deployed) but are deliberately
+    # unmapped here now that Resend/SES support has been removed from
+    # app.services.resend_client -- dropping live columns nothing reads isn't
+    # worth a destructive migration on production for a no-op cleanup.
     email_provider: Mapped[str | None] = mapped_column(String(20), default=None)
-    resend_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
     brevo_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
-    mailersend_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
-    mailtrap_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
-    ses_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
-    ses_region: Mapped[str | None] = mapped_column(String(40), default=None)
     arkesel_sender_id: Mapped[str | None] = mapped_column(String(20), default=None)
 
     # Per-semester dues amounts, GHS. None means "fall back to the Settings

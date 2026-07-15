@@ -1489,7 +1489,7 @@ async def send_email(
     status = "sent"
     count = len(emails)
     try:
-        if emails and settings.resend_api_key:
+        if emails:
             await resend_send(to=emails, subject=subject, html=f"<p>{body}</p>")
     except Exception:
         status = "failed"
@@ -1852,12 +1852,7 @@ async def update_settings_payment(
 async def update_settings_email(
     request: Request,
     email_provider: str = Form(""),
-    resend_from_email: str = Form(""),
     brevo_from_email: str = Form(""),
-    mailersend_from_email: str = Form(""),
-    mailtrap_from_email: str = Form(""),
-    ses_from_email: str = Form(""),
-    ses_region: str = Form(""),
     arkesel_sender_id: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1878,12 +1873,7 @@ async def update_settings_email(
         db.add(org)
 
     org.email_provider = email_provider.strip().lower() or None
-    org.resend_from_email = resend_from_email.strip() or None
     org.brevo_from_email = brevo_from_email.strip() or None
-    org.mailersend_from_email = mailersend_from_email.strip() or None
-    org.mailtrap_from_email = mailtrap_from_email.strip() or None
-    org.ses_from_email = ses_from_email.strip() or None
-    org.ses_region = ses_region.strip() or None
     org.arkesel_sender_id = arkesel_sender_id.strip() or None
     await db.commit()
 
