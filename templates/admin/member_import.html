@@ -30,7 +30,18 @@
     <button type="submit" class="btn btn-primary">
       <i data-lucide="upload" class="w-4 h-4"></i> Upload
     </button>
+    <label class="flex items-center gap-2 text-sm text-ink-700">
+      <input type="checkbox" name="skip_emails" value="true" class="field-check" />
+      Don't send emails — give me a spreadsheet of credentials instead
+    </label>
   </form>
+  <p class="text-xs text-ink-500 mt-2">
+    With that checked, new accounts get a temporary password and a one-click setup link instead of
+    a welcome email, and nothing is emailed for this upload — after it finishes, a spreadsheet
+    (first name, email, phone, temporary password, setup link) will be ready to download from the
+    results page for you to distribute yourself. It's shown only once, so download it before
+    leaving that page.
+  </p>
 </div>
 {% endblock %}
 

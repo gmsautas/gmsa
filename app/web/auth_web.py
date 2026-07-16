@@ -353,7 +353,7 @@ async def reset_password_submit(
         )
 
     try:
-        await password_reset.consume_reset_token(db, token=token, new_password=new_password)
+        user = await password_reset.consume_reset_token(db, token=token, new_password=new_password)
     except PasswordResetError as e:
         return templates.TemplateResponse(
             request=request,
@@ -362,4 +362,27 @@ async def reset_password_submit(
             status_code=400,
         )
 
-    return RedirectResponse("/login?reset=1", status_code=303)
+    # Auto-login instead of sending them back to the login page to type the
+    # password they just chose -- same cookies /login sets, since setting a
+    # password through a verified link is just as much "proof of identity" as
+    # a password field. This is what makes a voter's/member's setup link (see
+    # member_provisioning.find_or_create_member_no_email and its "Account
+    # Setup Link" spreadsheet column) a true one-click flow: click link, set
+    # password, land signed in.
+    dashboard = "/admin/dashboard" if user.role in ("admin", "superadmin") else "/member/dashboard"
+    resp = RedirectResponse(dashboard, status_code=303)
+    resp.set_cookie(
+        "gmsa_access",
+        create_access_token(str(user.id)),
+        httponly=True,
+        samesite="lax",
+        max_age=3600,
+    )
+    resp.set_cookie(
+        "gmsa_refresh",
+        create_refresh_token(str(user.id)),
+        httponly=True,
+        samesite="lax",
+        max_age=2592000,
+    )
+    return resp

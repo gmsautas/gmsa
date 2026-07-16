@@ -27,6 +27,27 @@
   </div>
 </div>
 
+{% if credentials_b64 %}
+<div class="card p-6 mb-6 border-amber-300 bg-amber-50">
+  <h3 class="font-bold text-forest-900 mb-2 flex items-center gap-2">
+    <i data-lucide="file-spreadsheet" class="w-4 h-4 text-amber-700"></i> Voter Credentials Spreadsheet
+  </h3>
+  <p class="text-sm text-ink-700 mb-4">
+    Emails were skipped for this upload. Download the spreadsheet below now — it holds every new
+    account's temporary password and voter token in plaintext, is generated only for this page
+    view, and is not stored anywhere on the server. Distribute it to voters yourself and keep it
+    somewhere safe until you have.
+  </p>
+  <a
+    href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{{ credentials_b64 }}"
+    download="voter_credentials_{{ election.id }}.xlsx"
+    class="btn btn-primary"
+  >
+    <i data-lucide="download" class="w-4 h-4"></i> Download Credentials (.xlsx)
+  </a>
+</div>
+{% endif %}
+
 {% if result.conflicts %}
 <div class="card p-6 mb-6">
   <h3 class="font-bold text-forest-900 mb-3 flex items-center gap-2">

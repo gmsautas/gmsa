@@ -188,7 +188,10 @@ async def verify_reset_token(db: AsyncSession, token: str) -> User:
     return user
 
 
-async def consume_reset_token(db: AsyncSession, *, token: str, new_password: str) -> None:
+async def consume_reset_token(db: AsyncSession, *, token: str, new_password: str) -> User:
+    """Returns the user so the web layer can log them straight in (set the
+    same session cookies normal login would) instead of sending them back to
+    the login page to type the password they just chose."""
     row, user = await _get_valid_token_row(db, token)
     user.password_hash = hash_password(new_password)
     # Setting a password through a verified emailed link already satisfies
@@ -198,3 +201,4 @@ async def consume_reset_token(db: AsyncSession, *, token: str, new_password: str
     user.must_change_password = False
     row.used_at = datetime.utcnow()
     await db.commit()
+    return user

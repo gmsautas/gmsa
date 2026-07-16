@@ -220,6 +220,11 @@ class RegisterImportResult:
     skipped_duplicates: int = 0
     conflicts: list[dict] = field(default_factory=list)
     email_failures: list[str] = field(default_factory=list)
+    # Populated only when import_register is run with send_emails=False --
+    # one entry per newly-issued voter token, holding everything an admin
+    # needs to hand a voter their credentials offline instead of by email.
+    # See member_provisioning.build_credentials_workbook.
+    credentials: list[dict] = field(default_factory=list)
 
 
 async def import_register(
@@ -229,6 +234,7 @@ async def import_register(
     _admin: User,
     *,
     base_url: str,
+    send_emails: bool = True,
     on_row: Callable[[int, int, dict], None] | None = None,
 ) -> RegisterImportResult:
     """`on_row`, if given, is called synchronously after each row finishes
@@ -239,12 +245,23 @@ async def import_register(
     plus, when "outcome" is "imported": "created" (bool), "voter_created"
     (bool), "account_email_failed" (bool), "token_email_failed" (bool).
 
+    send_emails=False turns off both the account-setup and voter-token
+    emails entirely -- instead, a newly created account gets a real
+    plaintext temp password AND a one-click setup link (see
+    member_provisioning.find_or_create_member_no_email), and every freshly
+    issued voter token is collected into result.credentials, for the caller
+    to hand to the admin as a downloadable spreadsheet (see
+    member_provisioning.build_credentials_workbook) instead of relying on
+    delivery. Existing/linked accounts never get a new password or link here
+    (their real credentials are unknown/untouched), so their credentials
+    row's temp_password and setup_link are both "".
+
     Commits after every row rather than once at the end -- for a large
     register this runs as one long web request, and each row already sends
-    real email(s) before the row finishes; committing per-row means a
-    request that gets cut off partway (timeout, deploy, worker recycle)
-    only loses the rows after the cutoff, never rolls back rows whose
-    emails already went out.
+    real email(s) before the row finishes (when send_emails=True); committing
+    per-row means a request that gets cut off partway (timeout, deploy,
+    worker recycle) only loses the rows after the cutoff, never rolls back
+    rows whose emails already went out.
     """
     result = RegisterImportResult()
     seen: set[tuple[str, str]] = set()
@@ -272,15 +289,22 @@ async def import_register(
             continue
         seen.add(key)
 
+        account_setup_url = None
+        temp_password = None
         try:
-            # send_setup_email=False -- always defer. If this row also ends up
-            # creating a voter (the common case), we want ONE combined email
-            # (account setup + voter token) instead of two separate ones; see
-            # below.
-            user, created, _deferred, account_setup_url = await member_provisioning.find_or_create_member(
-                db, student_id=student_id, email=email, name=name, base_url=base_url,
-                send_setup_email=False,
-            )
+            if send_emails:
+                # send_setup_email=False -- always defer. If this row also
+                # ends up creating a voter (the common case), we want ONE
+                # combined email (account setup + voter token) instead of two
+                # separate ones; see below.
+                user, created, _deferred, account_setup_url = await member_provisioning.find_or_create_member(
+                    db, student_id=student_id, email=email, name=name, base_url=base_url,
+                    send_setup_email=False,
+                )
+            else:
+                user, created, temp_password, account_setup_url = await member_provisioning.find_or_create_member_no_email(
+                    db, student_id=student_id, email=email, name=name, base_url=base_url,
+                )
         except member_provisioning.ProvisioningConflict as err:
             result.conflicts.append({"row": row, "reason": str(err)})
             if on_row:
@@ -337,23 +361,38 @@ async def import_register(
         # token (and, for a new account, the setup link), so both must
         # already be durably saved before anything goes out, or an
         # interrupted process could leave a voter holding an emailed
-        # token/link that got rolled back and no longer exists.
+        # token/link that got rolled back and no longer exists. Same
+        # reasoning applies when send_emails=False: nothing gets exported
+        # into the credentials list until it's already durable.
         await db.commit()
+
         email_failed = False
-        try:
-            if created:
-                await send_account_setup_and_voter_token_email(
-                    user.email, election, account_setup_url, plaintext_token
+        if send_emails:
+            try:
+                if created:
+                    await send_account_setup_and_voter_token_email(
+                        user.email, election, account_setup_url, plaintext_token
+                    )
+                else:
+                    await send_voter_token_email(user.email, election, plaintext_token)
+            except resend_client.ResendError as err:
+                label = "welcome + voter token" if created else "voter token"
+                purpose = "account_setup_and_voter_token" if created else "voter_token"
+                result.email_failures.append(f"{label} email to {user.email}")
+                email_failed = True
+                await email_failures.record_failure(
+                    db, recipient=user.email, purpose=purpose, error=err
                 )
-            else:
-                await send_voter_token_email(user.email, election, plaintext_token)
-        except resend_client.ResendError as err:
-            label = "welcome + voter token" if created else "voter token"
-            purpose = "account_setup_and_voter_token" if created else "voter_token"
-            result.email_failures.append(f"{label} email to {user.email}")
-            email_failed = True
-            await email_failures.record_failure(
-                db, recipient=user.email, purpose=purpose, error=err
+        else:
+            result.credentials.append(
+                {
+                    "first_name": member_provisioning.extract_first_name(user.name),
+                    "email": user.email,
+                    "phone": user.phone or "",
+                    "temp_password": temp_password or "",
+                    "voter_token": plaintext_token,
+                    "setup_link": account_setup_url or "",
+                }
             )
 
         if on_row:

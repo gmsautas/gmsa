@@ -1,3 +1,4 @@
+import base64
 import re
 from datetime import date as date_type
 from datetime import datetime, time
@@ -296,6 +297,7 @@ async def member_import_page(request: Request, db: AsyncSession = Depends(get_db
 async def member_import_submit(
     request: Request,
     file: UploadFile,
+    skip_emails: str = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -308,12 +310,29 @@ async def member_import_submit(
         rows = member_provisioning.parse_register_file(file.filename or "", contents)
     except member_provisioning.RegisterFileError as err:
         return RedirectResponse(f"/admin/members/import?error={quote(str(err))}", status_code=303)
-    result = await member_provisioning.import_members(db, rows, base_url=str(request.base_url))
+
+    send_emails = not bool(skip_emails)
+    result = await member_provisioning.import_members(
+        db, rows, base_url=str(request.base_url), send_emails=send_emails
+    )
+
+    # Built here (not stored) and offered as an immediate one-time download --
+    # same "shown once, never persisted" handling as the admin password-reveal
+    # flow elsewhere in this file, just as a file instead of on-screen text.
+    credentials_b64 = None
+    if not send_emails and result.credentials:
+        workbook_bytes = member_provisioning.build_credentials_workbook(result.credentials)
+        credentials_b64 = base64.b64encode(workbook_bytes).decode()
 
     return templates.TemplateResponse(
         request=request,
         name="admin/member_import_result.html",
-        context={"admin": admin, "active_nav": "members", "result": result},
+        context={
+            "admin": admin,
+            "active_nav": "members",
+            "result": result,
+            "credentials_b64": credentials_b64,
+        },
     )
 
 

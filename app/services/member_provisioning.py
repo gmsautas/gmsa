@@ -1,6 +1,7 @@
-"""Shared member-provisioning helpers: find-or-create a User (set up via an
-emailed one-click link, never a plaintext temp password) and generic
-CSV/XLSX row parsing for bulk imports.
+"""Shared member-provisioning helpers: find-or-create a User (normally set up
+via an emailed one-click link; optionally via a real temp password + the same
+link handed back for offline distribution instead) and generic CSV/XLSX row
+parsing for bulk imports.
 
 Used by both the election voter-register upload (app.services.elections) and
 the standalone member bulk-upload (app.web.admin_web) — kept in its own
@@ -16,12 +17,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import openpyxl
+from openpyxl.styles import Font
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.models.models import User
 from app.services import academic, email_failures, password_reset, resend_client
+
+
+def extract_first_name(name: str) -> str:
+    """Best-effort "first name" for a spreadsheet column, out of the single
+    free-text `name` field this app stores (there's no separate first/last
+    name on User) -- just the first whitespace-separated token."""
+    parts = (name or "").split()
+    return parts[0] if parts else (name or "")
 
 
 class ProvisioningConflict(Exception):
@@ -44,25 +54,11 @@ def normalize_phone(raw: str) -> str:
     return value
 
 
-async def find_or_create_member(
-    db: AsyncSession, *, student_id: str, email: str, name: str, base_url: str, send_setup_email: bool = True
-) -> tuple[User, bool, bool, str | None]:
-    """Find an existing user by email or student_id, or create one and issue
-    it a one-click account-setup link.
-
-    Returns (user, created, email_failed, account_setup_url).
-
-    When send_setup_email=True (default, used by import_members): the setup
-    link is emailed immediately for a newly created user; email_failed
-    reflects whether that send succeeded, and account_setup_url is always
-    None.
-
-    When send_setup_email=False (used by elections.import_register): the
-    link is still issued and durably committed, but NOT emailed --
-    email_failed is always False here, and account_setup_url holds the link
-    so the caller can send it itself, e.g. combined with a voter token into
-    one email instead of two separate ones. The caller becomes responsible
-    for handling/recording a failed send of that link.
+async def _find_existing_member(db: AsyncSession, *, student_id: str, email: str) -> User | None:
+    """Shared lookup/conflict-check core of find_or_create_member and
+    find_or_create_member_no_email -- looks up by email and by student_id and
+    raises ProvisioningConflict if they resolve to two different accounts (or
+    to an existing account whose student_id doesn't match this row's).
 
     Raises ProvisioningConflict if the email and student_id belong to two
     different existing accounts -- this also catches two different students
@@ -92,7 +88,32 @@ async def find_or_create_member(
             f"mistake in the source file; fix one of them and re-import that row"
         )
 
-    user = user_by_email or user_by_sid
+    return user_by_email or user_by_sid
+
+
+async def find_or_create_member(
+    db: AsyncSession, *, student_id: str, email: str, name: str, base_url: str, send_setup_email: bool = True
+) -> tuple[User, bool, bool, str | None]:
+    """Find an existing user by email or student_id, or create one and issue
+    it a one-click account-setup link.
+
+    Returns (user, created, email_failed, account_setup_url).
+
+    When send_setup_email=True (default, used by import_members): the setup
+    link is emailed immediately for a newly created user; email_failed
+    reflects whether that send succeeded, and account_setup_url is always
+    None.
+
+    When send_setup_email=False (used by elections.import_register): the
+    link is still issued and durably committed, but NOT emailed --
+    email_failed is always False here, and account_setup_url holds the link
+    so the caller can send it itself, e.g. combined with a voter token into
+    one email instead of two separate ones. The caller becomes responsible
+    for handling/recording a failed send of that link.
+
+    Raises ProvisioningConflict -- see _find_existing_member.
+    """
+    user = await _find_existing_member(db, student_id=student_id, email=email)
     if user is not None:
         return user, False, False, None
 
@@ -134,6 +155,56 @@ async def find_or_create_member(
         )
 
     return user, True, email_failed, account_setup_url
+
+
+async def find_or_create_member_no_email(
+    db: AsyncSession, *, student_id: str, email: str, name: str, base_url: str
+) -> tuple[User, bool, str | None, str | None]:
+    """Find-or-create variant for imports run with sending disabled entirely
+    (see elections.import_register's and import_members's send_emails=False
+    path) -- no email goes out. A newly created account instead gets BOTH:
+
+    - a real, admin-visible temporary password (same style as
+      reset_password_for_admin_reveal) for handing to the member verbally
+      (phone, in person, WhatsApp text), and
+    - a one-click account-setup link (same mechanism as
+      find_or_create_member's emailed link, just not emailed here) for
+      handing to them as something to click instead -- following it lands on
+      the same "choose your password" page, and now auto-logs them straight
+      in on success (see app.web.auth_web.reset_password_submit).
+
+    Both are meant to be bundled into a credentials spreadsheet (see
+    build_credentials_workbook) for the admin to distribute offline.
+
+    Returns (user, created, temp_password, setup_url) -- temp_password and
+    setup_url are both None when the account already existed, since
+    importing a register never resets an existing member's credentials.
+
+    Raises ProvisioningConflict -- see _find_existing_member.
+    """
+    user = await _find_existing_member(db, student_id=student_id, email=email)
+    if user is not None:
+        return user, False, None, None
+
+    temp_password = secrets.token_urlsafe(9)
+    user = User(
+        name=name or email.split("@")[0],
+        email=email,
+        student_id=student_id,
+        password_hash=hash_password(temp_password),
+        must_change_password=True,
+        role="member",
+        status="active",
+    )
+    db.add(user)
+    await db.flush()
+
+    # Commits (the new token row, plus this just-flushed user) before
+    # returning -- same durability guarantee as find_or_create_member's
+    # issue_account_setup_link call, just never emailed.
+    setup_url = await password_reset.issue_account_setup_link(db, user=user, base_url=base_url)
+
+    return user, True, temp_password, setup_url
 
 
 async def reset_and_resend_welcome_email(db: AsyncSession, user: User, *, base_url: str) -> None:
@@ -188,14 +259,28 @@ class MemberImportResult:
     skipped_duplicates: int = 0
     conflicts: list[dict] = field(default_factory=list)
     email_failures: list[str] = field(default_factory=list)
+    # Populated only when import_members is run with send_emails=False -- one
+    # entry per newly created account, holding everything an admin needs to
+    # hand a member their credentials offline instead of by email. See
+    # build_credentials_workbook.
+    credentials: list[dict] = field(default_factory=list)
 
 
-async def import_members(db: AsyncSession, rows: list[dict], *, base_url: str) -> MemberImportResult:
+async def import_members(
+    db: AsyncSession, rows: list[dict], *, base_url: str, send_emails: bool = True
+) -> MemberImportResult:
     """Bulk create/link member accounts from parsed CSV/XLSX rows — the
     standalone counterpart to app.services.elections.import_register, minus
     any Voter/election coupling. Recognizes optional phone/program/
     program_category columns, applied only to newly created accounts (an
     existing account's details are never overwritten by a bulk upload).
+
+    send_emails=False turns off the account-setup email entirely and issues
+    each newly created account a real temp password + setup link instead
+    (see find_or_create_member_no_email), collected into result.credentials
+    for the caller to offer as a downloadable spreadsheet. Existing/linked
+    accounts are never touched either way, so they never get a credentials
+    row.
     """
     result = MemberImportResult()
     seen: set[tuple[str, str]] = set()
@@ -218,10 +303,18 @@ async def import_members(db: AsyncSession, rows: list[dict], *, base_url: str) -
             continue
         seen.add(key)
 
+        temp_password = None
+        setup_url = None
         try:
-            user, created, email_failed, _account_setup_url = await find_or_create_member(
-                db, student_id=student_id, email=email, name=name, base_url=base_url
-            )
+            if send_emails:
+                user, created, email_failed, _account_setup_url = await find_or_create_member(
+                    db, student_id=student_id, email=email, name=name, base_url=base_url
+                )
+            else:
+                email_failed = False
+                user, created, temp_password, setup_url = await find_or_create_member_no_email(
+                    db, student_id=student_id, email=email, name=name, base_url=base_url
+                )
         except ProvisioningConflict as err:
             result.conflicts.append({"row": row, "reason": str(err)})
             continue
@@ -237,6 +330,16 @@ async def import_members(db: AsyncSession, rows: list[dict], *, base_url: str) -
                 user.grad_year = academic.graduation_year(student_id, program_category)
             if email_failed:
                 result.email_failures.append(f"account email to {user.email}")
+            if not send_emails:
+                result.credentials.append(
+                    {
+                        "first_name": extract_first_name(user.name),
+                        "email": user.email,
+                        "phone": user.phone or "",
+                        "temp_password": temp_password or "",
+                        "setup_link": setup_url or "",
+                    }
+                )
         else:
             result.linked_users += 1
 
@@ -246,6 +349,57 @@ async def import_members(db: AsyncSession, rows: list[dict], *, base_url: str) -
         await db.commit()
 
     return result
+
+
+def build_credentials_workbook(credentials: list[dict], *, include_voter_token: bool = False) -> bytes:
+    """Renders a send_emails=False result's credentials (import_members's or
+    app.services.elections.import_register's) into an .xlsx file for the
+    admin to download once, in place of the account-setup/voter-token emails
+    that were skipped. Never written to disk by the caller -- generated on
+    demand from data already held in memory for this one request/response.
+
+    include_voter_token=True adds the extra "Voter Token" column the election
+    register import needs (each credentials dict must then also have a
+    "voter_token" key); plain member imports have no election/voter
+    involved, so leave it False.
+
+    The "Account Setup Link" column, when present, is rendered as a real
+    clickable hyperlink (not just plaintext) -- following it lands the
+    member/voter on the same "choose your password" page the emailed link
+    would have, and now auto-logs them in on success (see
+    app.web.auth_web.reset_password_submit).
+    """
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Credentials"
+
+    headers = ["First Name", "Email", "Phone", "Temporary Password"]
+    if include_voter_token:
+        headers.append("Voter Token")
+    headers.append("Account Setup Link")
+    sheet.append(headers)
+
+    link_font = Font(color="0F5132", underline="single")
+    for row in credentials:
+        values = [row["first_name"], row["email"], row["phone"], row["temp_password"]]
+        if include_voter_token:
+            values.append(row["voter_token"])
+        setup_link = row.get("setup_link") or ""
+        values.append(setup_link)
+        sheet.append(values)
+
+        if setup_link:
+            cell = sheet.cell(row=sheet.max_row, column=len(values))
+            cell.hyperlink = setup_link
+            cell.font = link_font
+
+    for column_cells in sheet.columns:
+        length = max(len(str(cell.value or "")) for cell in column_cells)
+        sheet.column_dimensions[column_cells[0].column_letter].width = min(max(length + 2, 12), 60)
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
 
 
 class RegisterFileError(Exception):
