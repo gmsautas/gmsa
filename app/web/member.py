@@ -366,12 +366,12 @@ async def change_password(
 ):
     user = await require_member(request, db)
 
-    if not verify_password(current_password, user.password_hash):
+    if not await verify_password(current_password, user.password_hash):
         return RedirectResponse("/member/profile?pwd_error=1", status_code=303)
     if new_password != confirm_new:
         return RedirectResponse("/member/profile?pwd_error=2", status_code=303)
 
-    user.password_hash = hash_password(new_password)
+    user.password_hash = await hash_password(new_password)
     await db.commit()
 
     return RedirectResponse("/member/profile?pwd_ok=1", status_code=303)

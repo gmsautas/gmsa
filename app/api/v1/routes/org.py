@@ -1,3 +1,4 @@
+import html
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -89,18 +90,20 @@ async def get_stats(db: AsyncSession = Depends(get_db)) -> StatsOut:
 async def contact(payload: ContactMessageRequest, db: AsyncSession = Depends(get_db)) -> dict:
     org = await _get_or_create_org(db)
 
-    html = (
-        f"<p><strong>Name:</strong> {payload.name}</p>"
-        f"<p><strong>Email:</strong> {payload.email}</p>"
+    # Escape user-supplied text before it lands in HTML sent to a real staff
+    # inbox -- otherwise a submitter can inject markup/scripts into the email.
+    body_html = (
+        f"<p><strong>Name:</strong> {html.escape(payload.name)}</p>"
+        f"<p><strong>Email:</strong> {html.escape(payload.email)}</p>"
         f"<p><strong>Message:</strong></p>"
-        f"<p>{payload.message}</p>"
+        f"<p>{html.escape(payload.message)}</p>"
     )
 
     try:
         await send_email(
             to=[org.email],
-            subject=f"Contact form: {payload.subject}",
-            html=html,
+            subject=f"Contact form: {payload.subject.strip()}",
+            html=body_html,
         )
     except ResendError:
         pass

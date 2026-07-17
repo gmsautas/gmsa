@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
@@ -11,12 +12,15 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 TokenType = Literal["access", "refresh"]
 
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+async def hash_password(password: str) -> str:
+    # argon2 is deliberately CPU-expensive (tens-hundreds of ms) -- run it off
+    # the event loop so one hash/verify call doesn't stall every other
+    # concurrent request on this single-threaded server.
+    return await asyncio.to_thread(pwd_context.hash, password)
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return await asyncio.to_thread(pwd_context.verify, plain_password, hashed_password)
 
 
 def _create_token(subject: str, token_type: TokenType, expires_delta: timedelta) -> str:

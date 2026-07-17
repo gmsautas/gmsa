@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps_web import require_member
+from app.core.rate_limit import is_locked_out, make_key, record_failure, record_success
 from app.core.security import verify_password, create_access_token, create_refresh_token, hash_password
 from app.core.templates import templates
 from app.api.deps import get_user_by_email
@@ -22,6 +23,13 @@ def _safe_next(next_: str | None, fallback: str) -> str:
     if next_ and next_.startswith("/") and not next_.startswith("//"):
         return next_
     return fallback
+
+
+def _client_ip(request: Request) -> str:
+    # request.client is None in some test/ASGI-client contexts -- fall back
+    # to a constant rather than crash, which just makes the rate-limit key
+    # rely on the email half alone in that situation.
+    return request.client.host if request.client else "unknown"
 
 
 # ── Member Login ───────────────────────────────────────────────────────────────
@@ -49,14 +57,29 @@ async def login_submit(
     next: str = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
+    rl_key = make_key(_client_ip(request), email)
+    if is_locked_out(rl_key):
+        return templates.TemplateResponse(
+            request=request,
+            name="auth/login.html",
+            context={
+                "request": request,
+                "error": "Too many failed attempts — try again in a few minutes.",
+                "next": next or "",
+            },
+            status_code=429,
+        )
+
     user = await get_user_by_email(db, email)
-    if not user or not verify_password(password, user.password_hash) or user.status != "active":
+    if not user or not await verify_password(password, user.password_hash) or user.status != "active":
+        record_failure(rl_key)
         return templates.TemplateResponse(
             request=request,
             name="auth/login.html",
             context={"request": request, "error": "Invalid email or password", "next": next or ""},
             status_code=401,
         )
+    record_success(rl_key)
 
     resp = RedirectResponse(url=_safe_next(next, "/member/dashboard"), status_code=303)
     resp.set_cookie(
@@ -101,14 +124,29 @@ async def admin_login_submit(
     next: str = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
+    rl_key = make_key(_client_ip(request), email)
+    if is_locked_out(rl_key):
+        return templates.TemplateResponse(
+            request=request,
+            name="auth/admin_login.html",
+            context={
+                "request": request,
+                "error": "Too many failed attempts — try again in a few minutes.",
+                "next": next or "",
+            },
+            status_code=429,
+        )
+
     user = await get_user_by_email(db, email)
-    if not user or not verify_password(password, user.password_hash) or user.status != "active":
+    if not user or not await verify_password(password, user.password_hash) or user.status != "active":
+        record_failure(rl_key)
         return templates.TemplateResponse(
             request=request,
             name="auth/admin_login.html",
             context={"request": request, "error": "Invalid email or password", "next": next or ""},
             status_code=401,
         )
+    record_success(rl_key)
 
     if user.role not in ("admin", "superadmin"):
         return templates.TemplateResponse(
@@ -225,7 +263,7 @@ async def register_submit(
     user = User(
         name=name,
         email=email,
-        password_hash=hash_password(password),
+        password_hash=await hash_password(password),
         phone=phone or None,
         program=program or None,
         program_category=program_category,
@@ -280,7 +318,7 @@ async def force_password_change_submit(
             status_code=422,
         )
 
-    user.password_hash = hash_password(new_password)
+    user.password_hash = await hash_password(new_password)
     user.must_change_password = False
     await db.commit()
 

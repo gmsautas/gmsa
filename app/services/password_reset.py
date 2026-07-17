@@ -193,7 +193,7 @@ async def consume_reset_token(db: AsyncSession, *, token: str, new_password: str
     same session cookies normal login would) instead of sending them back to
     the login page to type the password they just chose."""
     row, user = await _get_valid_token_row(db, token)
-    user.password_hash = hash_password(new_password)
+    user.password_hash = await hash_password(new_password)
     # Setting a password through a verified emailed link already satisfies
     # "the member has set their own password" -- without this, someone using
     # their account-setup link (see send_account_setup_link) would be forced

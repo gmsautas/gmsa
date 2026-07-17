@@ -152,13 +152,6 @@
     <h3 class="font-bold text-lg text-forest-900 mb-4 flex items-center gap-2">
       <i data-lucide="mail" class="w-4 h-4 text-forest-600"></i> Email & SMS
     </h3>
-    <p class="field-hint mb-4">
-      Controls which provider sends transactional email/SMS and where it sends from. Leave any field
-      blank to fall back to the server's environment-variable default (currently
-      provider = "{{ env_settings.email_provider }}"). Changing this takes effect on the very next
-      send — no redeploy needed. API keys themselves are managed separately on the
-      <a href="/admin/api-keys" class="text-forest-700 underline">API Keys</a> page.
-    </p>
     <div class="grid sm:grid-cols-2 gap-4">
       <div>
         <label class="field-label">Active Email Provider</label>
@@ -168,12 +161,6 @@
           </option>
           <option value="brevo" {% if org.email_provider == 'brevo' %}selected{% endif %}>Brevo</option>
         </select>
-        <p class="field-hint mt-1">
-          "Gmail" isn't offered here on purpose — it's a local-only SMTP path for
-          <code>scripts/local_gmail_import.py</code>'s bulk voter-register import, set via that
-          script's own env file, never via this live site (Gmail SMTP doesn't work reliably from a
-          hosted deployment).
-        </p>
       </div>
       <div>
         <label class="field-label">Arkesel Sender ID</label>

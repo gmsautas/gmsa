@@ -45,7 +45,7 @@
   </form>
 </div>
 
-<div class="table-card" x-data="tablePager({{ email_campaigns | length }}, 10)">
+<div class="table-card">
   <div class="table-card-head">
     <h4 class="font-bold text-forest-900 flex items-center gap-2">
       <i data-lucide="history" class="w-5 h-5 text-forest-600"></i> Campaign History
@@ -65,7 +65,7 @@
       </thead>
       <tbody>
         {% for c in email_campaigns %}
-        <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
+        <tr>
           <td class="whitespace-nowrap">{{ c.created_at | datetimeformat }}</td>
           <td>{{ c.audience }}</td>
           <td class="font-medium text-forest-900">{{ c.subject }}</td>
@@ -89,7 +89,32 @@
       </tbody>
     </table>
   </div>
-  {% include "partials/table_pager_foot.html" %}
+
+  {% if total_pages > 1 %}
+  <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-cream-200 text-sm text-ink-500">
+    <p>Page {{ page }} of {{ total_pages }} — {{ results_total }} total campaign{{ "s" if results_total != 1 else "" }}</p>
+    <div class="flex items-center gap-2">
+      {% if has_prev %}
+      <a href="?page={{ page - 1 }}&per_page={{ per_page }}" class="btn btn-outline btn-sm">
+        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Prev
+      </a>
+      {% else %}
+      <span class="btn btn-outline btn-sm opacity-40 pointer-events-none">
+        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Prev
+      </span>
+      {% endif %}
+      {% if has_next %}
+      <a href="?page={{ page + 1 }}&per_page={{ per_page }}" class="btn btn-outline btn-sm">
+        Next <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+      </a>
+      {% else %}
+      <span class="btn btn-outline btn-sm opacity-40 pointer-events-none">
+        Next <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 

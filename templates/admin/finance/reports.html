@@ -4,11 +4,42 @@
 {% block page_title %}Finance{% endblock %}
 
 {% block content %}
+{% if error %}
+<div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 font-medium" role="alert">
+  {{ error }}
+</div>
+{% endif %}
+
 <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
   <div>
     <h2 class="text-2xl font-extrabold text-forest-900">Reports</h2>
     <p class="text-sm text-ink-500 mt-1">Period summaries for handover and audit.</p>
   </div>
+</div>
+
+<div class="card p-6 mb-6">
+  <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2 mb-1">
+    <i data-lucide="file-down" class="w-5 h-5 text-forest-600"></i> Financial Transparency Report
+  </h3>
+  <p class="text-sm text-ink-500 mb-4">
+    Download a PDF financial statement for a date range, formatted for sharing with the wider
+    ummah -- the same statement format published to the community each semester.
+  </p>
+  <form method="get" action="/admin/finance/reports/download" class="flex flex-wrap items-end gap-4">
+    <div>
+      <label for="report-start" class="field-label">Start Date</label>
+      <input id="report-start" name="start_date" type="date" class="field-input"
+             value="{{ default_start }}" required />
+    </div>
+    <div>
+      <label for="report-end" class="field-label">End Date</label>
+      <input id="report-end" name="end_date" type="date" class="field-input"
+             value="{{ default_end }}" required />
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="download" class="w-4 h-4"></i> Download Financial Report
+    </button>
+  </form>
 </div>
 
 <div class="card p-6">
@@ -33,16 +64,9 @@
     </div>
   </div>
 
-  <!-- Expense breakdown by category -->
-  {% set expense_by_cat = {} %}
-  {% for x in expenses %}
-    {% if x.category in expense_by_cat %}
-      {% set _ = expense_by_cat.update({x.category: expense_by_cat[x.category] + x.amount}) %}
-    {% else %}
-      {% set _ = expense_by_cat.update({x.category: x.amount}) %}
-    {% endif %}
-  {% endfor %}
-
+  <!-- Expense breakdown by category -- expense_by_cat is a {category: total}
+       mapping computed in Python via a SQL GROUP BY (see finance_reports in
+       app/web/admin_web.py), not built here from a capped row list. -->
   {% if expense_by_cat %}
   <div>
     <h4 class="font-bold text-forest-900 mb-4">Expenses by Category</h4>

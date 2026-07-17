@@ -1,4 +1,6 @@
 import base64
+import io
+import math
 import re
 from datetime import date as date_type
 from datetime import datetime, time
@@ -6,14 +8,14 @@ from datetime import datetime, time
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import AsyncSessionLocal, get_db
 from app.core.deps_web import Forbidden, PageRedirect, require_admin, require_superadmin
 from app.core.templates import templates
 from app.models.models import (
@@ -38,9 +40,65 @@ from app.models.models import (
     Transaction,
     User,
 )
-from app.services import academic, member_provisioning, org_settings_cache, storage
+from app.services import academic, import_jobs, member_provisioning, org_settings_cache, storage
 
 router = APIRouter()
+
+
+# ─────────────────────────────────────────────
+# PAGINATION
+# ─────────────────────────────────────────────
+#
+# Shared by every server-rendered admin list page below -- these used to each
+# cap out at a bare `.limit(N)` with no way to see or reach rows past it (the
+# "fake pagination" audit finding). Mirrors the shape already proven in
+# app.web.elections_web._voters_list_context/voters_list: page/per_page query
+# params, a COUNT query run against the same filters as the main query
+# (before offset/limit), and offset/limit on the main query.
+
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 200
+
+
+def _parse_page_params(request: Request, *, default_per_page: int = DEFAULT_PAGE_SIZE) -> tuple[int, int]:
+    try:
+        page = int(request.query_params.get("page", 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.query_params.get("per_page", default_per_page))
+    except ValueError:
+        per_page = default_per_page
+    return page, per_page
+
+
+async def _paginate(
+    db: AsyncSession,
+    stmt,
+    *,
+    page: int,
+    per_page: int,
+    max_per_page: int = MAX_PAGE_SIZE,
+):
+    """Runs an already-filtered-but-not-yet-limited select() as a real
+    page/offset query. Returns
+    (rows, page, per_page, total, total_pages, has_prev, has_next).
+    """
+    page = max(page, 1)
+    per_page = min(max(per_page, 1), max_per_page)
+
+    total = (
+        await db.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))
+    ).scalar() or 0
+    total_pages = max(1, math.ceil(total / per_page)) if total else 1
+    page = min(page, total_pages)
+
+    rows = (
+        (await db.execute(stmt.offset((page - 1) * per_page).limit(per_page)))
+        .scalars()
+        .all()
+    )
+    return rows, page, per_page, total, total_pages, page > 1, page < total_pages
 
 
 # ─────────────────────────────────────────────
@@ -139,8 +197,12 @@ async def members_list(request: Request, db: AsyncSession = Depends(get_db)):
         stmt = stmt.where(User.role == role_filter)
     if status_filter:
         stmt = stmt.where(User.status == status_filter)
-    stmt = stmt.order_by(User.created_at.desc()).limit(300)
-    members = (await db.execute(stmt)).scalars().all()
+    stmt = stmt.order_by(User.created_at.desc())
+
+    page, per_page = _parse_page_params(request)
+    members, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
 
     total_count = (await db.execute(select(func.count(User.id)))).scalar() or 0
     active_count = (
@@ -193,6 +255,12 @@ async def members_list(request: Request, db: AsyncSession = Depends(get_db)):
             "graduating_count": graduating_count,
             "current_year": current_year,
             "error": request.query_params.get("error"),
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -293,15 +361,45 @@ async def member_import_page(request: Request, db: AsyncSession = Depends(get_db
     )
 
 
+async def _run_member_import_job(
+    *, job_id: str, rows: list[dict], base_url: str, send_emails: bool
+) -> None:
+    """Runs the actual (slow -- one commit and, usually, one awaited email
+    send per row) import off the request/response cycle; see
+    member_import_submit, which schedules this via BackgroundTasks instead of
+    awaiting it inline. Opens its OWN session -- FastAPI only runs background
+    tasks after the response has been sent, so the request's
+    `Depends(get_db)` session is already closed by the time this runs. Unlike
+    the election register import, there's no election/admin row to re-fetch
+    here -- import_members takes no such arguments.
+
+    Wrapped in a broad try/except so any unexpected error still marks the job
+    "failed" instead of leaving it stuck at "running" forever with no way for
+    the admin to tell it died."""
+    try:
+        async with AsyncSessionLocal() as db:
+
+            def on_row(index: int, total: int, _info: dict) -> None:
+                import_jobs.update_progress(job_id, index)
+
+            result = await member_provisioning.import_members(
+                db, rows, base_url=base_url, send_emails=send_emails, on_row=on_row
+            )
+            import_jobs.complete_job(job_id, result)
+    except Exception as err:  # noqa: BLE001 -- must never leave the job stuck at "running"
+        import_jobs.fail_job(job_id, str(err))
+
+
 @router.post("/members/import")
 async def member_import_submit(
     request: Request,
+    background_tasks: BackgroundTasks,
     file: UploadFile,
     skip_emails: str = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        admin = await require_admin(request, db)
+        await require_admin(request, db)
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
@@ -311,27 +409,71 @@ async def member_import_submit(
     except member_provisioning.RegisterFileError as err:
         return RedirectResponse(f"/admin/members/import?error={quote(str(err))}", status_code=303)
 
+    # Parsing the file is fast and stays inline; only the row loop -- one
+    # commit and, usually, one awaited email send per row -- is slow enough to
+    # risk outrunning the hosting platform's reverse-proxy request timeout on
+    # a large upload, so that part alone moves to a background task (see
+    # _run_member_import_job). The admin is redirected to a status page
+    # immediately instead of waiting on the response.
     send_emails = not bool(skip_emails)
-    result = await member_provisioning.import_members(
-        db, rows, base_url=str(request.base_url), send_emails=send_emails
+    job_id = import_jobs.create_job("member_import")
+    import_jobs.set_total(job_id, len(rows))
+    background_tasks.add_task(
+        _run_member_import_job,
+        job_id=job_id,
+        rows=rows,
+        base_url=str(request.base_url),
+        send_emails=send_emails,
     )
+    return RedirectResponse(f"/admin/members/import-jobs/{job_id}", status_code=303)
 
-    # Built here (not stored) and offered as an immediate one-time download --
-    # same "shown once, never persisted" handling as the admin password-reveal
-    # flow elsewhere in this file, just as a file instead of on-screen text.
-    credentials_b64 = None
-    if not send_emails and result.credentials:
-        workbook_bytes = member_provisioning.build_credentials_workbook(result.credentials)
-        credentials_b64 = base64.b64encode(workbook_bytes).decode()
+
+@router.get("/members/import-jobs/{job_id}")
+async def member_import_job_status(job_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        admin = await require_admin(request, db)
+    except PageRedirect as e:
+        return RedirectResponse(e.url, status_code=302)
+
+    job = import_jobs.get_job(job_id)
+    if job is None:
+        return RedirectResponse(
+            "/admin/members/import?error="
+            + quote("This import job's progress is no longer available (it may have finished a "
+                    "while ago, or the server restarted) — check the members list to see what came through."),
+            status_code=303,
+        )
+
+    if job["status"] == "completed":
+        result = job["result"]
+        # Rebuilt here, not stored on the job -- same "generated only for
+        # this page view, never persisted" handling member_import_submit used
+        # to do inline. Only ever non-empty when the import ran with
+        # send_emails=False (see MemberImportResult.credentials).
+        credentials_b64 = None
+        if result.credentials:
+            workbook_bytes = member_provisioning.build_credentials_workbook(result.credentials)
+            credentials_b64 = base64.b64encode(workbook_bytes).decode()
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/member_import_result.html",
+            context={
+                "admin": admin,
+                "active_nav": "members",
+                "result": result,
+                "credentials_b64": credentials_b64,
+            },
+        )
 
     return templates.TemplateResponse(
         request=request,
-        name="admin/member_import_result.html",
+        name="admin/import_job_status.html",
         context={
             "admin": admin,
             "active_nav": "members",
-            "result": result,
-            "credentials_b64": credentials_b64,
+            "job": job,
+            "back_url": "/admin/members/import",
         },
     )
 
@@ -563,15 +705,31 @@ async def finance_income(request: Request, db: AsyncSession = Depends(get_db)):
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    transactions = (
-        await db.execute(
-            select(Transaction).order_by(Transaction.created_at.desc()).limit(50)
-        )
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(Transaction).order_by(Transaction.created_at.desc())
+    transactions, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
     total_income, total_expenses, net_balance = await _finance_totals(db)
-    success_count = sum(1 for t in transactions if t.status == "success")
-    pending_count = sum(1 for t in transactions if t.status == "pending")
-    failed_count = sum(1 for t in transactions if t.status == "failed")
+
+    # Table-wide totals, not a tally of whichever page happens to be showing --
+    # same pattern as _finance_totals, run as separate aggregate queries
+    # instead of iterating the (now paginated) `transactions` list.
+    success_count = (
+        await db.execute(
+            select(func.count(Transaction.id)).where(Transaction.status == "success")
+        )
+    ).scalar() or 0
+    pending_count = (
+        await db.execute(
+            select(func.count(Transaction.id)).where(Transaction.status == "pending")
+        )
+    ).scalar() or 0
+    failed_count = (
+        await db.execute(
+            select(func.count(Transaction.id)).where(Transaction.status == "failed")
+        )
+    ).scalar() or 0
 
     return templates.TemplateResponse(
         request=request,
@@ -585,6 +743,12 @@ async def finance_income(request: Request, db: AsyncSession = Depends(get_db)):
             "success_count": success_count,
             "pending_count": pending_count,
             "failed_count": failed_count,
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -596,9 +760,11 @@ async def finance_expenses(request: Request, db: AsyncSession = Depends(get_db))
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    expenses = (
-        await db.execute(select(Expense).order_by(Expense.date.desc()).limit(300))
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(Expense).order_by(Expense.date.desc())
+    expenses, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
     _total_income, total_expenses, _net = await _finance_totals(db)
 
     return templates.TemplateResponse(
@@ -610,6 +776,12 @@ async def finance_expenses(request: Request, db: AsyncSession = Depends(get_db))
             "active_page": "expenses",
             "expenses": expenses,
             "total_expenses": total_expenses,
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -641,6 +813,20 @@ async def finance_momo(request: Request, db: AsyncSession = Depends(get_db)):
     )
 
 
+def _default_report_range(today: date_type | None = None) -> tuple[date_type, date_type]:
+    """Default date range for the downloadable financial statement.
+
+    There's no stored "semester start/end" anywhere in this codebase --
+    current_semester_label() (app/services/audience.py) only derives a label
+    (e.g. "Spring 2026") from a Jan-Jun / Jul-Dec split. Mirror that same
+    cutoff here so "current semester" means the same thing everywhere, and
+    run it through to today rather than a future semester-end date.
+    """
+    today = today or date_type.today()
+    start = date_type(today.year, 1, 1) if today.month <= 6 else date_type(today.year, 7, 1)
+    return start, today
+
+
 @router.get("/finance/reports")
 async def finance_reports(request: Request, db: AsyncSession = Depends(get_db)):
     try:
@@ -648,10 +834,19 @@ async def finance_reports(request: Request, db: AsyncSession = Depends(get_db)):
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    expenses = (
-        await db.execute(select(Expense).order_by(Expense.date.desc()).limit(300))
-    ).scalars().all()
+    # Never needs individual Expense rows -- reports.html only shows a
+    # category-breakdown chart, so aggregate in SQL (GROUP BY) rather than
+    # pulling a capped set of rows and summing them in Jinja, which silently
+    # produced a wrong/incomplete breakdown once total expenses passed 300.
+    expense_by_cat = dict(
+        (
+            await db.execute(
+                select(Expense.category, func.sum(Expense.amount)).group_by(Expense.category)
+            )
+        ).all()
+    )
     total_income, total_expenses, net_balance = await _finance_totals(db)
+    default_start, default_end = _default_report_range()
 
     return templates.TemplateResponse(
         request=request,
@@ -660,12 +855,265 @@ async def finance_reports(request: Request, db: AsyncSession = Depends(get_db)):
             "admin": admin,
             "active_nav": "finance",
             "active_page": "reports",
-            "expenses": expenses,
+            "expense_by_cat": expense_by_cat,
             "total_income": total_income,
             "total_expenses": total_expenses,
             "net_balance": net_balance,
+            "default_start": default_start,
+            "default_end": default_end,
+            "error": request.query_params.get("error"),
         },
     )
+
+
+@router.get("/finance/reports/download")
+async def finance_reports_download(
+    request: Request,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await require_admin(request, db)
+    except PageRedirect as e:
+        return RedirectResponse(e.url, status_code=302)
+
+    default_start, default_end = _default_report_range()
+    try:
+        start = date_type.fromisoformat(start_date) if start_date else default_start
+        end = date_type.fromisoformat(end_date) if end_date else default_end
+    except ValueError:
+        return RedirectResponse(
+            "/admin/finance/reports?error=" + quote("Invalid date format."), status_code=303
+        )
+
+    if start > end:
+        return RedirectResponse(
+            "/admin/finance/reports?error="
+            + quote("Start date must be on or before the end date."),
+            status_code=303,
+        )
+
+    org = await db.get(OrgSettings, 1)
+    if org is None:
+        org = OrgSettings(id=1)
+
+    transactions = (
+        await db.execute(
+            select(Transaction)
+            .options(selectinload(Transaction.user))
+            .where(
+                Transaction.status == "success",
+                Transaction.created_at >= datetime.combine(start, time.min),
+                Transaction.created_at <= datetime.combine(end, time.max),
+            )
+            .order_by(Transaction.created_at)
+        )
+    ).scalars().all()
+    expenses = (
+        await db.execute(
+            select(Expense)
+            .where(Expense.date >= start, Expense.date <= end)
+            .order_by(Expense.date)
+        )
+    ).scalars().all()
+
+    pdf_bytes = _render_financial_statement_pdf(org, start, end, transactions, expenses)
+    filename = f"GMSA-Financial-Statement-{start}-to-{end}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _transaction_display_name(tx: Transaction) -> str:
+    """Who to show as the source of an income line -- same fallback chain as
+    list_transactions() in app/api/v1/routes/finance.py: a logged-in donor's
+    account name wins, then the free-text donor_name captured at payment
+    time, then whatever description was recorded, else "Anonymous".
+    """
+    if tx.user:
+        return tx.user.name
+    return tx.donor_name or tx.description or "Anonymous"
+
+
+def _render_financial_statement_pdf(org, start_date, end_date, transactions, expenses) -> bytes:
+    from reportlab.lib.colors import HexColor
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+
+    from app.services import storage
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    forest = HexColor("#1E4F3A")  # --forest-700, matches the app's admin UI green
+    ink = HexColor("#111827")
+    gray = HexColor("#6B7280")
+
+    left = 20 * mm
+    right = width - 20 * mm
+    bottom_margin = 30 * mm
+    row_h = 7 * mm
+
+    org_name = (org.full_name if org else None) or "GMSA UTAS"
+    tagline = (org.tagline if org else None) or ""
+    address = (org.address if org else None) or ""
+
+    def draw_letterhead() -> float:
+        """Draws the green letterhead + period line, returns the Y cursor
+        just below it so callers can start printing table rows."""
+        top = height - 20 * mm
+        logo_path = storage.STATIC_DIR / "img" / "logo.png"
+        text_x = left
+        try:
+            if logo_path.exists():
+                c.drawImage(
+                    str(logo_path),
+                    left,
+                    top - 16 * mm,
+                    width=16 * mm,
+                    height=16 * mm,
+                    preserveAspectRatio=True,
+                    mask="auto",
+                )
+                text_x = left + 20 * mm
+        except Exception:
+            # A malformed/unsupported image must never break report generation --
+            # fall back to a text-only letterhead.
+            text_x = left
+
+        c.setFillColor(forest)
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(text_x, top - 5 * mm, org_name)
+        c.setFont("Helvetica", 9)
+        c.setFillColor(gray)
+        if tagline:
+            c.drawString(text_x, top - 10 * mm, tagline)
+        if address:
+            c.drawString(text_x, top - 14.5 * mm, address)
+
+        c.setStrokeColor(forest)
+        c.setLineWidth(1.2)
+        c.line(left, top - 18 * mm, right, top - 18 * mm)
+
+        c.setFillColor(ink)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawCentredString(
+            width / 2,
+            top - 25 * mm,
+            f"FINANCIAL STATEMENT — {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}",
+        )
+        c.setFont("Helvetica", 8)
+        c.setFillColor(gray)
+        c.drawRightString(right, top - 25 * mm - 4.5 * mm, f"Generated {date_type.today():%d %B %Y}")
+
+        return top - 32 * mm
+
+    def draw_section_header(y: float, title: str) -> float:
+        c.setFillColor(forest)
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(left, y, title)
+        c.setStrokeColor(forest)
+        c.setLineWidth(0.6)
+        c.line(left, y - 2 * mm, right, y - 2 * mm)
+        return y - 8 * mm
+
+    def draw_income_columns(y: float, continued: bool = False) -> float:
+        y = draw_section_header(y, "TABLE OF INCOME" + (" (continued)" if continued else ""))
+        c.setFont("Helvetica-Bold", 9)
+        c.setFillColor(ink)
+        c.drawString(left, y, "Date")
+        c.drawString(left + 25 * mm, y, "Description")
+        c.drawRightString(right, y, "Amount")
+        return y - row_h
+
+    def draw_expenditure_columns(y: float, continued: bool = False) -> float:
+        y = draw_section_header(y, "EXPENDITURES" + (" (continued)" if continued else ""))
+        c.setFont("Helvetica-Bold", 9)
+        c.setFillColor(ink)
+        c.drawString(left, y, "Date")
+        c.drawString(left + 25 * mm, y, "Description")
+        c.drawString(left + 110 * mm, y, "Category")
+        c.drawRightString(right, y, "Amount")
+        return y - row_h
+
+    def ensure_space(y: float, header_fn=None) -> float:
+        """Starts a fresh page (with the letterhead and, if given, the table's
+        column header repeated) if the next row would land inside the bottom
+        margin -- reportlab's canvas has no built-in pagination, so every
+        table loop below must call this before drawing a row."""
+        if y < bottom_margin:
+            c.showPage()
+            y = draw_letterhead()
+            if header_fn:
+                y = header_fn(y, True)
+        return y
+
+    y = draw_letterhead()
+
+    # ── Income ───────────────────────────────────────────────────────────
+    y = draw_income_columns(y)
+
+    total_income = 0
+    for tx in transactions:
+        y = ensure_space(y, draw_income_columns)
+        c.setFont("Helvetica", 9)
+        c.setFillColor(ink)
+        c.drawString(left, y, tx.created_at.strftime("%d %b %Y"))
+        c.drawString(left + 25 * mm, y, _transaction_display_name(tx)[:45])
+        c.drawRightString(right, y, f"{tx.currency} {float(tx.amount):,.2f}")
+        total_income += float(tx.amount)
+        y -= row_h
+
+    y = ensure_space(y, draw_income_columns)
+    c.setStrokeColor(forest)
+    c.line(left, y + 2 * mm, right, y + 2 * mm)
+    c.setFont("Helvetica-Bold", 9)
+    c.setFillColor(ink)
+    c.drawString(left, y, "TOTAL INCOME")
+    c.drawRightString(right, y, f"GHS {total_income:,.2f}")
+    y -= 12 * mm
+
+    # ── Expenditure ──────────────────────────────────────────────────────
+    y = ensure_space(y)
+    y = draw_expenditure_columns(y)
+
+    total_expenses = 0
+    for ex in expenses:
+        y = ensure_space(y, draw_expenditure_columns)
+        c.setFont("Helvetica", 9)
+        c.setFillColor(ink)
+        c.drawString(left, y, ex.date.strftime("%d %b %Y"))
+        c.drawString(left + 25 * mm, y, (ex.description or "")[:38])
+        c.drawString(left + 110 * mm, y, (ex.category or "")[:20])
+        c.drawRightString(right, y, f"{ex.currency} {float(ex.amount):,.2f}")
+        total_expenses += float(ex.amount)
+        y -= row_h
+
+    y = ensure_space(y, draw_expenditure_columns)
+    c.setStrokeColor(forest)
+    c.line(left, y + 2 * mm, right, y + 2 * mm)
+    c.setFont("Helvetica-Bold", 9)
+    c.setFillColor(ink)
+    c.drawString(left, y, "TOTAL EXPENDITURE")
+    c.drawRightString(right, y, f"GHS {total_expenses:,.2f}")
+    y -= 12 * mm
+
+    # ── Summary ──────────────────────────────────────────────────────────
+    y = ensure_space(y)
+    net_balance = total_income - total_expenses
+    c.setFillColor(forest)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(left, y, "AMOUNT LEFT (NET BALANCE)")
+    c.drawRightString(right, y, f"GHS {net_balance:,.2f}")
+
+    c.showPage()
+    c.save()
+    return buffer.getvalue()
 
 
 @router.post("/finance/momo/{transaction_id}/approve")
@@ -826,9 +1274,11 @@ async def content_blog(request: Request, db: AsyncSession = Depends(get_db)):
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    posts = (
-        await db.execute(select(BlogPost).order_by(BlogPost.date.desc()).limit(300))
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(BlogPost).order_by(BlogPost.date.desc())
+    posts, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -839,6 +1289,12 @@ async def content_blog(request: Request, db: AsyncSession = Depends(get_db)):
             "active_page": "blog",
             "posts": posts,
             "error": request.query_params.get("error"),
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -850,9 +1306,11 @@ async def content_events(request: Request, db: AsyncSession = Depends(get_db)):
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    events = (
-        await db.execute(select(Event).order_by(Event.date.desc()).limit(300))
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(Event).order_by(Event.date.desc())
+    events, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -862,6 +1320,12 @@ async def content_events(request: Request, db: AsyncSession = Depends(get_db)):
             "active_nav": "content",
             "active_page": "events",
             "events": events,
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -873,9 +1337,11 @@ async def content_announcements(request: Request, db: AsyncSession = Depends(get
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    announcements = (
-        await db.execute(select(Announcement).order_by(Announcement.date.desc()).limit(300))
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(Announcement).order_by(Announcement.date.desc())
+    announcements, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -885,6 +1351,12 @@ async def content_announcements(request: Request, db: AsyncSession = Depends(get
             "active_nav": "content",
             "active_page": "announcements",
             "announcements": announcements,
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -896,9 +1368,11 @@ async def content_resources(request: Request, db: AsyncSession = Depends(get_db)
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    resources = (
-        await db.execute(select(Resource).order_by(Resource.date.desc()).limit(300))
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(Resource).order_by(Resource.date.desc())
+    resources, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -909,6 +1383,12 @@ async def content_resources(request: Request, db: AsyncSession = Depends(get_db)
             "active_page": "resources",
             "resources": resources,
             "error": request.query_params.get("error"),
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -1405,11 +1885,11 @@ async def communications_sms(request: Request, db: AsyncSession = Depends(get_db
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    sms_campaigns = (
-        await db.execute(
-            select(SmsCampaign).order_by(SmsCampaign.created_at.desc()).limit(20)
-        )
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(SmsCampaign).order_by(SmsCampaign.created_at.desc())
+    sms_campaigns, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -1419,6 +1899,12 @@ async def communications_sms(request: Request, db: AsyncSession = Depends(get_db
             "active_nav": "comms",
             "active_page": "sms",
             "sms_campaigns": sms_campaigns,
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 
@@ -1430,11 +1916,11 @@ async def communications_email(request: Request, db: AsyncSession = Depends(get_
     except PageRedirect as e:
         return RedirectResponse(e.url, status_code=302)
 
-    email_campaigns = (
-        await db.execute(
-            select(EmailCampaign).order_by(EmailCampaign.created_at.desc()).limit(20)
-        )
-    ).scalars().all()
+    page, per_page = _parse_page_params(request)
+    stmt = select(EmailCampaign).order_by(EmailCampaign.created_at.desc())
+    email_campaigns, page, per_page, results_total, total_pages, has_prev, has_next = await _paginate(
+        db, stmt, page=page, per_page=per_page
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -1444,6 +1930,12 @@ async def communications_email(request: Request, db: AsyncSession = Depends(get_
             "active_nav": "comms",
             "active_page": "email",
             "email_campaigns": email_campaigns,
+            "page": page,
+            "per_page": per_page,
+            "results_total": results_total,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
         },
     )
 

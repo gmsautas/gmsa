@@ -3,14 +3,14 @@ import math
 from datetime import datetime
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.database import get_db
+from app.core.database import AsyncSessionLocal, get_db
 from app.core.deps_web import (
     Forbidden,
     PageRedirect,
@@ -20,7 +20,7 @@ from app.core.deps_web import (
 )
 from app.core.templates import templates
 from app.models.models import ELECTION_STATUSES, Candidate, Election, Position, User, Vote, Voter
-from app.services import elections, member_provisioning, resend_client
+from app.services import elections, import_jobs, member_provisioning, resend_client
 from app.services import storage
 from app.services.elections import ElectionError
 
@@ -521,10 +521,59 @@ async def candidate_delete(candidate_id: int, request: Request, db: AsyncSession
 # ADMIN — Register import
 # ─────────────────────────────────────────────
 
+async def _run_register_import_job(
+    *,
+    job_id: str,
+    election_id: int,
+    rows: list[dict],
+    admin_id: int,
+    base_url: str,
+    send_emails: bool,
+) -> None:
+    """Runs the actual (slow -- one commit and, usually, one awaited email
+    send per row) import off the request/response cycle; see register_upload,
+    which schedules this via BackgroundTasks instead of awaiting it inline.
+
+    Opens its OWN session rather than reusing the route's `db` -- FastAPI only
+    runs background tasks after the response has been sent, and the request's
+    `Depends(get_db)` session is already closed by then. `election`/`admin`
+    are therefore re-fetched by id here too: ORM objects loaded on one
+    AsyncSession can't be carried over into another.
+
+    Wrapped in a broad try/except so any unexpected error still marks the job
+    "failed" instead of leaving it stuck at "running" forever with no way for
+    the admin to tell it died.
+    """
+    try:
+        async with AsyncSessionLocal() as db:
+            election = await db.get(Election, election_id)
+            admin = await db.get(User, admin_id)
+            if election is None or admin is None:
+                import_jobs.fail_job(job_id, "Election or admin account no longer exists.")
+                return
+
+            def on_row(index: int, total: int, _info: dict) -> None:
+                import_jobs.update_progress(job_id, index)
+
+            result = await elections.import_register(
+                db,
+                election,
+                rows,
+                admin,
+                base_url=base_url,
+                send_emails=send_emails,
+                on_row=on_row,
+            )
+            import_jobs.complete_job(job_id, result)
+    except Exception as err:  # noqa: BLE001 -- must never leave the job stuck at "running"
+        import_jobs.fail_job(job_id, str(err))
+
+
 @admin_router.post("/{election_id}/register/upload", name="admin_election_register_upload")
 async def register_upload(
     election_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     file: UploadFile,
     skip_emails: str = Form(None),
     db: AsyncSession = Depends(get_db),
@@ -546,30 +595,88 @@ async def register_upload(
             f"/admin/elections/{election_id}/voters?error={quote(str(err))}", status_code=303
         )
 
+    # Parsing the file is fast (no I/O beyond the already-read upload) and
+    # stays inline; only the row loop below -- one commit and, usually, one
+    # awaited email send per row -- is slow enough to risk outrunning the
+    # hosting platform's reverse-proxy request timeout on a large register,
+    # so that part alone moves to a background task (see
+    # _run_register_import_job). The admin is redirected to a status page
+    # immediately instead of waiting on the response.
     send_emails = not bool(skip_emails)
-    result = await elections.import_register(
-        db, election, rows, admin, base_url=str(request.base_url), send_emails=send_emails
+    job_id = import_jobs.create_job("register_import")
+    import_jobs.set_total(job_id, len(rows))
+    background_tasks.add_task(
+        _run_register_import_job,
+        job_id=job_id,
+        election_id=election_id,
+        rows=rows,
+        admin_id=admin.id,
+        base_url=str(request.base_url),
+        send_emails=send_emails,
+    )
+    return RedirectResponse(
+        f"/admin/elections/{election_id}/register/import-jobs/{job_id}", status_code=303
     )
 
-    # Built here (not stored) and offered as an immediate one-time download --
-    # same "shown once, never persisted" handling as the admin password-reveal
-    # flow elsewhere in this file, just as a file instead of on-screen text.
-    credentials_b64 = None
-    if not send_emails and result.credentials:
-        workbook_bytes = member_provisioning.build_credentials_workbook(
-            result.credentials, include_voter_token=True
+
+@admin_router.get(
+    "/{election_id}/register/import-jobs/{job_id}", name="admin_election_register_import_job_status"
+)
+async def register_import_job_status(
+    election_id: int, job_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
+    try:
+        admin = await require_admin(request, db)
+    except PageRedirect as e:
+        return RedirectResponse(e.url, status_code=302)
+
+    election = await db.get(Election, election_id)
+    if election is None:
+        return RedirectResponse("/admin/elections", status_code=303)
+
+    job = import_jobs.get_job(job_id)
+    voters_url = f"/admin/elections/{election_id}/voters"
+    if job is None:
+        return RedirectResponse(
+            f"{voters_url}?error="
+            + quote("This import job's progress is no longer available (it may have finished a "
+                    "while ago, or the server restarted) — check the voters list to see what came through."),
+            status_code=303,
         )
-        credentials_b64 = base64.b64encode(workbook_bytes).decode()
+
+    if job["status"] == "completed":
+        result = job["result"]
+        # Rebuilt here, not stored on the job -- same "generated only for
+        # this page view, never persisted" handling register_upload used to
+        # do inline. Only ever non-empty when the import ran with
+        # send_emails=False (see RegisterImportResult.credentials).
+        credentials_b64 = None
+        if result.credentials:
+            workbook_bytes = member_provisioning.build_credentials_workbook(
+                result.credentials, include_voter_token=True
+            )
+            credentials_b64 = base64.b64encode(workbook_bytes).decode()
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/election_register_result.html",
+            context={
+                "admin": admin,
+                "active_nav": "elections",
+                "election": election,
+                "result": result,
+                "credentials_b64": credentials_b64,
+            },
+        )
 
     return templates.TemplateResponse(
         request=request,
-        name="admin/election_register_result.html",
+        name="admin/import_job_status.html",
         context={
             "admin": admin,
             "active_nav": "elections",
-            "election": election,
-            "result": result,
-            "credentials_b64": credentials_b64,
+            "job": job,
+            "back_url": voters_url,
         },
     )
 

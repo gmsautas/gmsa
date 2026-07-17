@@ -13,6 +13,7 @@ import csv
 import io
 import re
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -123,7 +124,7 @@ async def find_or_create_member(
         student_id=student_id,
         # Placeholder only -- nobody is ever told this value. The account is
         # activated by setting a real password through the emailed link.
-        password_hash=hash_password(secrets.token_urlsafe(32)),
+        password_hash=await hash_password(secrets.token_urlsafe(32)),
         must_change_password=True,
         role="member",
         status="active",
@@ -191,7 +192,7 @@ async def find_or_create_member_no_email(
         name=name or email.split("@")[0],
         email=email,
         student_id=student_id,
-        password_hash=hash_password(temp_password),
+        password_hash=await hash_password(temp_password),
         must_change_password=True,
         role="member",
         status="active",
@@ -226,7 +227,7 @@ async def reset_password_for_admin_reveal(db: AsyncSession, user: User) -> tuple
     whole point); returns (temp_password, email_sent) so the caller can still
     show whether the notification email also went out."""
     temp_password = secrets.token_urlsafe(9)
-    user.password_hash = hash_password(temp_password)
+    user.password_hash = await hash_password(temp_password)
     user.must_change_password = True
     await db.commit()
 
@@ -267,7 +268,12 @@ class MemberImportResult:
 
 
 async def import_members(
-    db: AsyncSession, rows: list[dict], *, base_url: str, send_emails: bool = True
+    db: AsyncSession,
+    rows: list[dict],
+    *,
+    base_url: str,
+    send_emails: bool = True,
+    on_row: Callable[[int, int, dict], None] | None = None,
 ) -> MemberImportResult:
     """Bulk create/link member accounts from parsed CSV/XLSX rows — the
     standalone counterpart to app.services.elections.import_register, minus
@@ -281,11 +287,21 @@ async def import_members(
     for the caller to offer as a downloadable spreadsheet. Existing/linked
     accounts are never touched either way, so they never get a credentials
     row.
+
+    `on_row`, if given, is called synchronously after each row finishes
+    processing as `on_row(index, total, info)` (1-based index) -- same
+    contract as elections.import_register's on_row, minus the voter-specific
+    keys (there's no Voter/election here). `info` always has "email" and
+    "outcome" ("imported" | "skipped_duplicate" | "conflict") plus, when
+    "outcome" is "imported": "created" (bool) and "email_failed" (bool,
+    always False when created is False -- an existing/linked account is never
+    emailed by this import).
     """
     result = MemberImportResult()
     seen: set[tuple[str, str]] = set()
+    total = len(rows)
 
-    for row in rows:
+    for index, row in enumerate(rows, start=1):
         student_id = str(row.get("student_id") or "").strip()
         email = str(row.get("email") or "").strip().lower()
         name = str(row.get("name") or "").strip()
@@ -295,11 +311,15 @@ async def import_members(
 
         if not student_id or not email:
             result.conflicts.append({"row": row, "reason": "Missing student_id or email"})
+            if on_row:
+                on_row(index, total, {"email": email, "outcome": "conflict"})
             continue
 
         key = (student_id, email)
         if key in seen:
             result.skipped_duplicates += 1
+            if on_row:
+                on_row(index, total, {"email": email, "outcome": "skipped_duplicate"})
             continue
         seen.add(key)
 
@@ -317,6 +337,8 @@ async def import_members(
                 )
         except ProvisioningConflict as err:
             result.conflicts.append({"row": row, "reason": str(err)})
+            if on_row:
+                on_row(index, total, {"email": email, "outcome": "conflict"})
             continue
 
         if created:
@@ -347,6 +369,18 @@ async def import_members(
         # import runs as one long web request, so this keeps a request
         # that gets cut off partway from rolling back rows already done.
         await db.commit()
+
+        if on_row:
+            on_row(
+                index,
+                total,
+                {
+                    "email": email,
+                    "outcome": "imported",
+                    "created": created,
+                    "email_failed": email_failed if created else False,
+                },
+            )
 
     return result
 

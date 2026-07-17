@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin
@@ -11,6 +11,13 @@ from app.services import academic
 from app.services.audience import current_semester_label
 
 router = APIRouter(prefix="/admin/members", tags=["members"])
+
+# Same page/per_page convention as app.web.elections_web's
+# DEFAULT_VOTERS_PER_PAGE/MAX_VOTERS_PER_PAGE -- this endpoint had no limit at
+# all (unlike its web-admin equivalent, which caps at 300), so every row in
+# the users table was being loaded and serialized on every call.
+DEFAULT_MEMBERS_PER_PAGE = 100
+MAX_MEMBERS_PER_PAGE = 200
 
 
 async def _dues_status_for(db: AsyncSession, user_id: int) -> str:
@@ -26,12 +33,18 @@ async def _dues_status_for(db: AsyncSession, user_id: int) -> str:
 
 @router.get("", response_model=list[UserAdminOut])
 async def list_members(
+    response: Response,
     q: str | None = None,
     role: str | None = None,
     status_: str | None = Query(default=None, alias="status"),
+    page: int = Query(default=1),
+    per_page: int = Query(default=DEFAULT_MEMBERS_PER_PAGE),
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ) -> list[UserAdminOut]:
+    page = max(page, 1)
+    per_page = min(max(per_page, 1), MAX_MEMBERS_PER_PAGE)
+
     query = select(User)
 
     if q:
@@ -42,13 +55,21 @@ async def list_members(
     if status_:
         query = query.where(User.status == status_)
 
-    query = query.order_by(User.name)
+    total = (
+        await db.execute(select(func.count()).select_from(query.subquery()))
+    ).scalar() or 0
+    response.headers["X-Total-Count"] = str(total)
+
+    query = query.order_by(User.name).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(query)
     users = result.scalars().all()
 
     semester = current_semester_label()
     records_result = await db.execute(
-        select(DuesRecord).where(DuesRecord.semester == semester)
+        select(DuesRecord).where(
+            DuesRecord.semester == semester,
+            DuesRecord.user_id.in_([u.id for u in users]),
+        )
     )
     records_by_user = {r.user_id: r for r in records_result.scalars().all()}
 

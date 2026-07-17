@@ -16,6 +16,12 @@ engine = create_async_engine(
     future=True,
     pool_pre_ping=True,
     pool_recycle=1800,
+    # See app.core.config.Settings.db_pool_size / db_max_overflow for the
+    # reasoning behind these values -- deliberately sized for this small
+    # org's expected concurrency and mindful of Postgres's own connection
+    # ceiling, rather than left at the QueuePool defaults.
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
 )
 
 AsyncSessionLocal = async_sessionmaker(

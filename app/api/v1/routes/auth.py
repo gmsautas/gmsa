@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_user_by_email
 from app.core.database import get_db
+from app.core.rate_limit import is_locked_out, make_key, record_failure, record_success
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -44,7 +45,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     user = User(
         name=payload.name,
         email=payload.email.strip().lower(),
-        password_hash=hash_password(payload.password),
+        password_hash=await hash_password(payload.password),
         phone=payload.phone,
         program=payload.program,
         program_category=payload.program_category,
@@ -70,12 +71,21 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/login", response_model=Token)
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token:
+async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)) -> Token:
+    rl_key = make_key(request.client.host if request.client else "unknown", payload.email)
+    if is_locked_out(rl_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed attempts — try again in a few minutes.",
+        )
+
     user = await get_user_by_email(db, payload.email)
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if user is None or not await verify_password(payload.password, user.password_hash):
+        record_failure(rl_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password"
         )
+    record_success(rl_key)
     if user.status != "active":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
 
@@ -128,7 +138,7 @@ async def change_password(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    if not verify_password(payload.current_password, user.password_hash):
+    if not await verify_password(payload.current_password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
-    user.password_hash = hash_password(payload.new_password)
+    user.password_hash = await hash_password(payload.new_password)
     await db.commit()

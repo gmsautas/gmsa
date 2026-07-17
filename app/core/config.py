@@ -1,7 +1,7 @@
 from functools import lru_cache
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,21 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:8123,http://127.0.0.1:8123"
 
     database_url: str = "postgresql+asyncpg://gmsa:gmsa@localhost:5432/gmsa_utas"
+
+    # Connection pool sizing (app.core.database). This is a small org's app --
+    # a few hundred members, occasional concurrent admin/member usage on a
+    # single web service instance -- so these are chosen deliberately rather
+    # than left at SQLAlchemy's QueuePool defaults (5 + 10 = 15), which exist
+    # for a generic workload, not this one. pool_size=10 comfortably covers
+    # normal request concurrency plus a couple of admin operations (e.g. bulk
+    # member imports) running at once; max_overflow=5 gives a small burst
+    # buffer for traffic spikes. The 15-connection ceiling this implies also
+    # matters because Postgres itself caps max_connections -- often fairly low
+    # on hobby/free tiers (roughly 20-100 depending on provider) -- and this
+    # app is only one of possibly several things sharing that budget. Revisit
+    # upward if the org's membership/usage grows enough to saturate this.
+    db_pool_size: int = 10
+    db_max_overflow: int = 5
 
     @field_validator("database_url")
     @classmethod
@@ -122,6 +137,26 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def _reject_default_secret_outside_dev(self) -> "Settings":
+        # secret_key signs every JWT access/refresh token (app.core.security) and
+        # HMACs every password-reset and voter token (app.services.password_reset,
+        # app.services.elections). The literal default below is public (it's in
+        # this file, in source control) — booting a non-development environment
+        # with it still in effect means anyone can forge those tokens. Render's
+        # render.yaml auto-generates a real value and Railway's docs say to set
+        # one manually, but neither guarantees the env var actually reaches the
+        # container (dropped on redeploy, a new service, a bare `docker run`) --
+        # so refuse to start rather than silently sign tokens with a known key.
+        if self.environment != "development" and self.secret_key == "dev-secret-key-change-me":
+            raise ValueError(
+                "SECRET_KEY is still the default 'dev-secret-key-change-me' while "
+                f"ENVIRONMENT={self.environment!r} (!= 'development'). Set a real "
+                "SECRET_KEY env var before starting the app outside development -- "
+                "generate one with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+            )
+        return self
 
 
 @lru_cache

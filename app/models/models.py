@@ -114,7 +114,7 @@ class Transaction(Base, TimestampMixin):
     currency: Mapped[str] = mapped_column(String(8), default="GHS")
     method: Mapped[str | None] = mapped_column(String(80), default=None)
     reference: Mapped[str] = mapped_column(String(120), unique=True, index=True)
-    status: Mapped[str] = mapped_column(String(20), default="pending")
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
 
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), index=True, default=None)
     paystack_data: Mapped[dict | None] = mapped_column(JSON, default=None)
@@ -139,7 +139,7 @@ class DuesRecord(Base, TimestampMixin):
     semester: Mapped[str] = mapped_column(String(40))
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     currency: Mapped[str] = mapped_column(String(8), default="GHS")
-    status: Mapped[str] = mapped_column(String(20), default="unpaid")
+    status: Mapped[str] = mapped_column(String(20), default="unpaid", index=True)
     due_date: Mapped[date | None] = mapped_column(Date, default=None)
     paid_at: Mapped[datetime | None] = mapped_column(default=None)
     transaction_id: Mapped[int | None] = mapped_column(
@@ -557,7 +557,7 @@ class Position(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("election_id", "title", name="uq_position_election_title"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    election_id: Mapped[int] = mapped_column(ForeignKey("elections.id"))
+    election_id: Mapped[int] = mapped_column(ForeignKey("elections.id"), index=True)
     title: Mapped[str] = mapped_column(String(160))
     order_index: Mapped[int] = mapped_column(default=0)
 
@@ -614,7 +614,7 @@ class VoterToken(Base, TimestampMixin):
     __tablename__ = "voter_tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    voter_id: Mapped[int] = mapped_column(ForeignKey("voters.id"))
+    voter_id: Mapped[int] = mapped_column(ForeignKey("voters.id"), index=True)
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     is_used: Mapped[bool] = mapped_column(default=False)
     used_at: Mapped[datetime | None] = mapped_column(default=None)

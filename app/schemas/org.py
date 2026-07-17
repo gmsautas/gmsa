@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # Fields only a super admin may change via PATCH /org (payout details).
 PAYMENT_FIELDS = {
@@ -52,7 +52,7 @@ class StatsOut(BaseModel):
 
 
 class ContactMessageRequest(BaseModel):
-    name: str
-    email: str
-    subject: str
-    message: str
+    name: str = Field(..., max_length=120)
+    email: str = Field(..., max_length=255)
+    subject: str = Field(..., max_length=200)
+    message: str = Field(..., max_length=5000)
