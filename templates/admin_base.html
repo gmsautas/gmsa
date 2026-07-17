@@ -24,7 +24,7 @@
     };
   </script>
 
-  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link rel="stylesheet" href="{{ static_url('css/styles.css') }}" />
   {% block extra_head %}{% endblock %}
 </head>
 <body class="font-sans antialiased">
@@ -162,7 +162,7 @@
 
   <script src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="/static/js/main.js"></script>
+  <script src="{{ static_url('js/main.js') }}"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

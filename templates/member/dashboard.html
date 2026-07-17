@@ -81,7 +81,7 @@
             {% if current_due %}{{ current_due.amount | money }}{% else %}—{% endif %}
           </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           {% if current_due and current_due.status != 'paid' %}
           <a href="/member/dues" class="btn btn-secondary btn-sm"><i data-lucide="wallet" class="w-4 h-4"></i> Pay Dues Now</a>
           {% endif %}

@@ -575,6 +575,20 @@ textarea:focus-visible,
   border-color: var(--forest-400);
 }
 
+/* ---- Grid item shrink fix --------------------------------------------------- */
+
+/* Grid items default to min-width:auto, meaning a child that can't shrink
+   below its content's intrinsic width (a nowrap button row, a long
+   unbreakable string) blows out its track and overflows the viewport on
+   narrow screens -- even though the same content would happily wrap inside
+   a plain block container. Every dashboard/detail page here uses `grid
+   lg:grid-cols-N` for its two/three-column layout, so this one rule is what
+   lets each column actually shrink to fit on mobile instead of forcing
+   horizontal scroll on the whole page. */
+.grid > * {
+  min-width: 0;
+}
+
 /* ---- App shell (member / admin sidebars) ----------------------------------- */
 
 .app-shell {
