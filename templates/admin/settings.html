@@ -219,6 +219,22 @@
     </button>
   </div>
 </form>
+
+<form method="post" action="/admin/dues/generate" class="card p-6 mt-6 flex items-center justify-between gap-4 flex-wrap">
+  <div>
+    <h3 class="font-bold text-lg text-forest-900 flex items-center gap-2">
+      <i data-lucide="receipt" class="w-4 h-4 text-forest-600"></i> Generate Dues Now
+    </h3>
+    <p class="field-hint mt-1">
+      Saving dues amounts above already bills every active member who doesn't yet have a due for
+      the current semester. Use this if members joined since your last save and need billing
+      without changing the amounts.
+    </p>
+  </div>
+  <button type="submit" class="btn btn-secondary shrink-0">
+    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Generate Dues Now
+  </button>
+</form>
 {% endblock %}
 
 {% block extra_scripts %}

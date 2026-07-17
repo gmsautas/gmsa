@@ -12,6 +12,7 @@ from app.models import DuesRecord, User
 from app.schemas.finance import DuesRecordOut, DuesStatusOut
 from app.services import academic
 from app.services.audience import current_semester_label
+from app.services.dues import generate_dues_records
 
 me_router = APIRouter(prefix="/me", tags=["dues"])
 admin_router = APIRouter(prefix="/admin/dues", tags=["dues-admin"])
@@ -137,33 +138,5 @@ async def generate_dues(
     payload = payload or DuesGenerateRequest()
     semester = payload.semester or current_semester_label()
 
-    users_result = await db.execute(select(User).where(User.status == "active"))
-    users = list(users_result.scalars().all())
-
-    records_result = await db.execute(
-        select(DuesRecord.user_id).where(DuesRecord.semester == semester)
-    )
-    existing_user_ids = {row[0] for row in records_result.all()}
-
-    created = 0
-    for u in users:
-        if u.id in existing_user_ids:
-            continue
-        amount = (
-            Decimal(payload.amount)
-            if payload.amount is not None
-            else academic.effective_dues_amount(u)
-        )
-        db.add(
-            DuesRecord(
-                user_id=u.id,
-                semester=semester,
-                amount=amount,
-                currency="GHS",
-                status="unpaid",
-            )
-        )
-        created += 1
-
-    await db.commit()
+    created = await generate_dues_records(db, semester=semester, amount=payload.amount)
     return {"created": created, "semester": semester}

@@ -278,8 +278,8 @@ async def import_members(
     """Bulk create/link member accounts from parsed CSV/XLSX rows — the
     standalone counterpart to app.services.elections.import_register, minus
     any Voter/election coupling. Recognizes optional phone/program/
-    program_category columns, applied only to newly created accounts (an
-    existing account's details are never overwritten by a bulk upload).
+    program_category/level columns, applied only to newly created accounts
+    (an existing account's details are never overwritten by a bulk upload).
 
     send_emails=False turns off the account-setup email entirely and issues
     each newly created account a real temp password + setup link instead
@@ -308,6 +308,7 @@ async def import_members(
         phone = normalize_phone(str(row.get("phone") or ""))
         program = str(row.get("program") or "").strip()
         program_category = str(row.get("program_category") or "").strip().lower()
+        level_raw = str(row.get("level") or "").strip()
 
         if not student_id or not email:
             result.conflicts.append({"row": row, "reason": "Missing student_id or email"})
@@ -350,6 +351,11 @@ async def import_members(
             if program_category in academic.PROGRAM_CATEGORIES:
                 user.program_category = program_category
                 user.grad_year = academic.graduation_year(student_id, program_category)
+            if level_raw:
+                try:
+                    user.level_override = int(level_raw)
+                except ValueError:
+                    pass
             if email_failed:
                 result.email_failures.append(f"account email to {user.email}")
             if not send_emails:

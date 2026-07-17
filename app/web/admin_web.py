@@ -41,6 +41,7 @@ from app.models.models import (
     User,
 )
 from app.services import academic, import_jobs, member_provisioning, org_settings_cache, storage
+from app.services.dues import generate_dues_records
 
 router = APIRouter()
 
@@ -2263,9 +2264,13 @@ async def settings_page(request: Request, db: AsyncSession = Depends(get_db)):
         db.add(org)
         await db.commit()
 
-    flash = (
-        "Settings saved." if request.query_params.get("saved") else None
-    )
+    dues_generated = request.query_params.get("dues_generated")
+    if dues_generated:
+        flash = f"Settings saved. {dues_generated} member(s) billed for the current semester's dues."
+    elif request.query_params.get("saved"):
+        flash = "Settings saved."
+    else:
+        flash = None
 
     return templates.TemplateResponse(
         request=request,
@@ -2432,4 +2437,28 @@ async def update_settings_dues(
 
     await org_settings_cache.load_cache(db)
 
-    return RedirectResponse("/admin/settings?saved=1", status_code=303)
+    # Saving amounts is the moment an admin expects members to start seeing
+    # a due -- backfill a DuesRecord for this semester for every active
+    # member who doesn't already have one (existing members/semesters are
+    # left untouched; effective_dues_amount falls back to the flat amount
+    # above for anyone with no resolvable level/tier).
+    created = await generate_dues_records(db)
+
+    return RedirectResponse(f"/admin/settings?saved=1&dues_generated={created}", status_code=303)
+
+
+@router.post("/dues/generate")
+async def generate_dues_now(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    # On-demand version of the backfill above, for when an admin wants to
+    # (re)issue this semester's dues without changing the amounts -- e.g.
+    # after new members were added since the last save.
+    try:
+        await require_admin(request, db)
+    except PageRedirect as e:
+        return RedirectResponse(e.url, status_code=302)
+
+    created = await generate_dues_records(db)
+    return RedirectResponse(f"/admin/settings?saved=1&dues_generated={created}", status_code=303)
