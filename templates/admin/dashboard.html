@@ -15,41 +15,30 @@
   </div>
 </div>
 
-<!-- Stat tiles -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Active Members</p>
-      <i data-lucide="users" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ members_count }}</p>
-    <p class="field-hint mt-1">{{ dues_unpaid }} pending dues</p>
+<!-- Stat strip -->
+<div class="stat-strip mb-2" style="--cols:4">
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="users" class="w-3 h-3"></i> Active Members</p>
+    <p class="stat-value">{{ members_count }}</p>
+    <p class="stat-sub">{{ dues_unpaid }} pending dues</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Total Income</p>
-      <i data-lucide="trending-up" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ total_income | abbreviate_money }}</p>
-    <p class="field-hint mt-1">Dues, donations &amp; projects</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="trending-up" class="w-3 h-3"></i> Total Income</p>
+    <p class="stat-value">{{ total_income | abbreviate_money }}</p>
+    <p class="stat-sub">Dues, donations &amp; projects</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Total Expenses</p>
-      <i data-lucide="trending-down" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ total_expenses | abbreviate_money }}</p>
-    <p class="field-hint mt-1">Recorded by executives</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="trending-down" class="w-3 h-3"></i> Total Expenses</p>
+    <p class="stat-value">{{ total_expenses | abbreviate_money }}</p>
+    <p class="stat-sub">Recorded by executives</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Net Balance</p>
-      <i data-lucide="banknote" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ net_balance | abbreviate_money }}</p>
-    <p class="field-hint mt-1">{{ projects | length }} active projects</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="banknote" class="w-3 h-3"></i> Net Balance</p>
+    <p class="stat-value">{{ net_balance | abbreviate_money }}</p>
+    <p class="stat-sub">{{ projects | length }} active projects</p>
   </div>
 </div>
+<p class="text-xs text-ink-500 mb-8">Figures for the {{ current_dues_period_label() }} academic year, updated in real time.</p>
 
 <div class="grid lg:grid-cols-3 gap-6">
   <!-- Recent Transactions -->

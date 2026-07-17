@@ -189,15 +189,11 @@
       <i data-lucide="coins" class="w-4 h-4 text-forest-600"></i> Dues Amounts
     </h3>
     <p class="field-hint mb-4">
-      Per-semester membership dues, in GHS. Leave a field blank to fall back to the server default.
+      Membership dues are billed once per academic year, by level tier. Leave a field blank to
+      fall back to the server default. Members whose level can't be determined yet are billed at
+      the Continuing rate.
     </p>
-    <div class="grid sm:grid-cols-2 gap-4">
-      <div>
-        <label class="field-label">Flat Dues Amount</label>
-        <input name="dues_amount_ghs" type="number" min="0" class="field-input" placeholder="{{ env_settings.dues_amount_ghs }}" value="{{ org.dues_amount_ghs if org.dues_amount_ghs is not none else '' }}" />
-        <p class="field-hint mt-1">Used when a member's level/tier can't be determined.</p>
-      </div>
-      <div></div>
+    <div class="grid sm:grid-cols-3 gap-4">
       <div>
         <label class="field-label">Level 100</label>
         <input name="dues_amount_level_100" type="number" min="0" class="field-input" placeholder="{{ env_settings.dues_amount_level_100 }}" value="{{ org.dues_amount_level_100 if org.dues_amount_level_100 is not none else '' }}" />
@@ -227,7 +223,7 @@
     </h3>
     <p class="field-hint mt-1">
       Saving dues amounts above already bills every active member who doesn't yet have a due for
-      the current semester. Use this if members joined since your last save and need billing
+      this academic year. Use this if members joined since your last save and need billing
       without changing the amounts.
     </p>
   </div>

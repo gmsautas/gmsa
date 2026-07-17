@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.models import DuesRecord, User
 from app.schemas.finance import DuesRecordOut, DuesStatusOut
 from app.services import academic
-from app.services.audience import current_semester_label
+from app.services.audience import current_dues_period_label
 from app.services.dues import generate_dues_records
 
 me_router = APIRouter(prefix="/me", tags=["dues"])
@@ -43,7 +43,7 @@ async def get_my_dues(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DuesStatusOut:
-    semester = current_semester_label()
+    semester = current_dues_period_label()
 
     result = await db.execute(
         select(DuesRecord)
@@ -74,7 +74,7 @@ async def list_admin_dues(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ) -> list[AdminDuesRowOut]:
-    target_semester = semester or current_semester_label()
+    target_semester = semester or current_dues_period_label()
 
     users_result = await db.execute(
         select(User).where(User.status == "active").order_by(User.name)
@@ -136,7 +136,7 @@ async def generate_dues(
     _admin: User = Depends(require_admin),
 ) -> dict:
     payload = payload or DuesGenerateRequest()
-    semester = payload.semester or current_semester_label()
+    semester = payload.semester or current_dues_period_label()
 
     created = await generate_dues_records(db, semester=semester, amount=payload.amount)
     return {"created": created, "semester": semester}

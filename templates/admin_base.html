@@ -43,12 +43,12 @@
 
     <aside class="sidebar fixed lg:sticky top-0 left-0 h-screen z-50 transform transition-transform duration-200 flex flex-col"
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
-      <div class="p-5 flex items-center gap-2.5 border-b border-white/10">
-        <img src="/static/img/logo.png" alt="GMSA UTAS" class="h-9 w-9 shrink-0 object-contain" />
-        <div>
-          <p class="font-extrabold text-white leading-none">GMSA <span class="text-gold-400">UTAS</span></p>
-          <p class="text-xs text-forest-300 mt-1">Admin Panel</p>
+      <div class="p-4 flex items-center gap-2.5 border-b border-cream-300">
+        <img src="/static/img/logo.png" alt="GMSA UTAS" class="h-8 w-8 shrink-0 object-contain rounded-lg" />
+        <div class="min-w-0">
+          <p class="font-extrabold text-forest-900 leading-none truncate">GMSA <span class="text-gold-600">UTAS</span></p>
         </div>
+        <span class="chip ml-auto shrink-0">{{ 'Super Admin' if admin.role == 'superadmin' else 'Admin' }}</span>
       </div>
 
       <nav class="flex-1 p-4 space-y-1 overflow-y-auto" aria-label="Admin navigation">
@@ -121,7 +121,7 @@
         {% endif %}
       </nav>
 
-      <div class="p-4 border-t border-white/10 space-y-1">
+      <div class="p-4 border-t border-cream-300 space-y-1">
         <a href="/" class="sidebar-link"><i data-lucide="arrow-left" class="w-[18px] h-[18px]"></i> Back to Website</a>
         <a href="/admin/logout" class="sidebar-link"><i data-lucide="log-out" class="w-[18px] h-[18px]"></i> Log Out</a>
       </div>
@@ -129,16 +129,24 @@
 
     <div class="app-main">
       <header class="app-topbar sticky top-0 z-30">
-        <div class="flex items-center justify-between gap-4 px-4 sm:px-6 py-4">
-          <div class="flex items-center gap-3">
-            <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 -ml-2 rounded-md text-forest-800 hover:bg-cream-200" aria-label="Toggle sidebar">
-              <i data-lucide="menu" class="w-6 h-6"></i>
-            </button>
-            <h1 class="text-lg sm:text-xl font-bold text-forest-900">{% block page_title %}Dashboard{% endblock %}</h1>
-          </div>
-          <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3">
+          <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 -ml-2 rounded-md text-forest-800 hover:bg-cream-200 shrink-0" aria-label="Toggle sidebar">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+          </button>
+          <h1 class="text-lg sm:text-xl font-bold text-forest-900 shrink-0">{% block page_title %}Dashboard{% endblock %}</h1>
+
+          <form action="/admin/members" method="get" class="topbar-search hidden md:flex" role="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="global-search" type="search" name="q" placeholder="Search members by name, email, ID…" autocomplete="off" />
+            <kbd>Ctrl K</kbd>
+          </form>
+
+          <div class="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
+            <span class="chip hidden sm:inline-flex" title="Current dues billing period">
+              <i data-lucide="calendar-days" class="w-3 h-3"></i> {{ current_dues_period_label() }}
+            </span>
             <div class="avatar w-9 h-9 text-sm">{{ admin.initials }}</div>
-            <div class="hidden sm:block text-sm">
+            <div class="hidden lg:block text-sm">
               <p class="font-semibold text-forest-900 leading-none">{{ admin.name }}</p>
               <p class="text-xs text-ink-500">{{ 'Super Admin' if admin.role == 'superadmin' else 'Admin' }}</p>
             </div>

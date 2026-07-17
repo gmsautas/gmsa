@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DuesRecord, User
+from app.services import academic
 
 AUDIENCE_LABELS: dict[str, str] = {
     "all": "All Members",
@@ -21,10 +22,13 @@ AUDIENCE_LABELS: dict[str, str] = {
 }
 
 
-def current_semester_label(today: date | None = None) -> str:
-    today = today or date.today()
-    term = "Spring" if today.month <= 6 else "Fall"
-    return f"{term} {today.year}"
+def current_dues_period_label(today: date | None = None) -> str:
+    """The current academic-year billing period, e.g. "2026/2027" for the
+    Sept 2026 -- Aug 2027 academic year. Dues are billed once per academic
+    year (not per semester), so every DuesRecord for a given year shares
+    this one label regardless of when during the year it was generated."""
+    start = academic.current_academic_year_start(today)
+    return f"{start}/{start + 1}"
 
 
 async def resolve_audience(db: AsyncSession, key: str) -> list[User]:
@@ -39,11 +43,11 @@ async def resolve_audience(db: AsyncSession, key: str) -> list[User]:
     elif key == "graduating":
         result = await db.execute(base.where(User.grad_year == date.today().year))
     elif key in ("unpaid_dues", "paid_dues"):
-        semester = current_semester_label()
+        period = current_dues_period_label()
         target_status = "unpaid" if key == "unpaid_dues" else "paid"
         dues_result = await db.execute(
             select(DuesRecord.user_id).where(
-                DuesRecord.semester == semester, DuesRecord.status == target_status
+                DuesRecord.semester == period, DuesRecord.status == target_status
             )
         )
         user_ids = [row[0] for row in dues_result.all()]

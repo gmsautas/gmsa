@@ -100,9 +100,10 @@ def dues_amount_for_tier(tier: str) -> Decimal:
 def dues_amount_for_member(
     student_id: str | None, category: str | None, today: date | None = None
 ) -> Decimal:
-    tier = dues_tier_for_member(student_id, category, today)
-    if tier is None:
-        return Decimal(org_settings_cache.get("dues_amount_ghs") or settings.dues_amount_ghs)
+    # No separate flat/default fee -- a member whose tier can't be resolved
+    # yet (e.g. a bulk upload missing program_category) is billed at the
+    # Continuing rate until an admin corrects their level.
+    tier = dues_tier_for_member(student_id, category, today) or "continuing"
     return dues_amount_for_tier(tier)
 
 
@@ -140,7 +141,6 @@ def effective_dues_tier(user: "User", today: date | None = None) -> str | None:
 
 
 def effective_dues_amount(user: "User", today: date | None = None) -> Decimal:
-    tier = effective_dues_tier(user, today)
-    if tier is None:
-        return Decimal(org_settings_cache.get("dues_amount_ghs") or settings.dues_amount_ghs)
+    # Same Continuing-rate fallback as dues_amount_for_member, above.
+    tier = effective_dues_tier(user, today) or "continuing"
     return dues_amount_for_tier(tier)

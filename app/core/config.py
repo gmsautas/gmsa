@@ -127,9 +127,9 @@ class Settings(BaseSettings):
     prayer_default_city: str = "Accra"
     prayer_default_country: str = "Ghana"
 
-    dues_amount_ghs: int = 150
-
-    # Tiered per-semester dues amounts, by academic level.
+    # Tiered annual dues amounts, by academic level. No separate flat/default
+    # amount -- a member whose tier can't be resolved is billed at the
+    # Continuing rate (see app.services.academic.effective_dues_amount).
     dues_amount_level_100: int = 100
     dues_amount_continuing: int = 150
     dues_amount_final_year: int = 200

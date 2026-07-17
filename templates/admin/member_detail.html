@@ -187,7 +187,7 @@
           <table class="table-base table-collapse">
             <thead>
               <tr>
-                <th>Semester</th>
+                <th>Year</th>
                 <th>Due Date</th>
                 <th>Paid At</th>
                 <th>Status</th>
@@ -197,7 +197,7 @@
             <tbody>
               {% for d in dues_records %}
               <tr x-show="page === Math.floor({{ loop.index0 }} / pageSize)">
-                <td data-label="Semester" class="font-medium text-forest-900">{{ d.semester }}</td>
+                <td data-label="Year" class="font-medium text-forest-900">{{ d.semester }}</td>
                 <td data-label="Due Date" class="whitespace-nowrap">{{ d.due_date | datetimeformat("%d %b %Y") }}</td>
                 <td data-label="Paid At" class="whitespace-nowrap text-ink-500">{{ d.paid_at | datetimeformat if d.paid_at else '—' }}</td>
                 <td data-label="Status">

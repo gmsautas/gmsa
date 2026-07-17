@@ -210,7 +210,8 @@ async def dues_receipt(due_id: int, request: Request, db: AsyncSession = Depends
     transaction = await db.get(Transaction, due.transaction_id) if due.transaction_id else None
 
     pdf_bytes = _render_receipt_pdf(org, user, due, transaction)
-    filename = f"GMSA-Receipt-{due.semester.replace(' ', '-')}.pdf"
+    period_slug = due.semester.replace(" ", "-").replace("/", "-")
+    filename = f"GMSA-Receipt-{period_slug}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -240,7 +241,7 @@ def _render_receipt_pdf(org, user, due, transaction) -> bytes:
     rows = [
         ("Member Name", user.name),
         ("Email", user.email),
-        ("Semester", due.semester),
+        ("Academic Year", due.semester),
         ("Amount Paid", f"{due.currency} {float(due.amount):,.2f}"),
         ("Date Paid", due.paid_at.strftime("%d %B %Y") if due.paid_at else "—"),
         ("Reference", transaction.reference if transaction else "—"),

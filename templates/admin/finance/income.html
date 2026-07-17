@@ -11,38 +11,26 @@
   </div>
 </div>
 
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Total Income</p>
-      <i data-lucide="trending-up" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ total_income | abbreviate_money }}</p>
-    <p class="field-hint mt-1">Successful transactions</p>
+<div class="stat-strip mb-6" style="--cols:4">
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="trending-up" class="w-3 h-3"></i> Total Income</p>
+    <p class="stat-value">{{ total_income | abbreviate_money }}</p>
+    <p class="stat-sub">Successful transactions</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Successful</p>
-      <i data-lucide="check-circle" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ success_count }}</p>
-    <p class="field-hint mt-1">Completed payments</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="check-circle" class="w-3 h-3"></i> Successful</p>
+    <p class="stat-value">{{ success_count }}</p>
+    <p class="stat-sub">Completed payments</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Pending</p>
-      <i data-lucide="clock" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ pending_count }}</p>
-    <p class="field-hint mt-1">Awaiting confirmation</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="clock" class="w-3 h-3"></i> Pending</p>
+    <p class="stat-value">{{ pending_count }}</p>
+    <p class="stat-sub">Awaiting confirmation</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Failed</p>
-      <i data-lucide="x-circle" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ failed_count }}</p>
-    <p class="field-hint mt-1">Unsuccessful attempts</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="x-circle" class="w-3 h-3"></i> Failed</p>
+    <p class="stat-value">{{ failed_count }}</p>
+    <p class="stat-sub">Unsuccessful attempts</p>
   </div>
 </div>
 

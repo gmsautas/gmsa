@@ -27,6 +27,18 @@
     window.lucide.createIcons();
   }
 
+  /* ---- Ctrl/Cmd+K focuses the admin/member topbar search -------------------- */
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      var search = document.getElementById('global-search');
+      if (search) {
+        e.preventDefault();
+        search.focus();
+        search.select();
+      }
+    }
+  });
+
   /* ---- Toast notifications ------------------------------------------------ */
   function ensureToastRegion() {
     var region = document.getElementById('toast-region');

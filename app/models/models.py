@@ -447,9 +447,14 @@ class OrgSettings(Base, TimestampMixin):
     brevo_from_email: Mapped[str | None] = mapped_column(String(255), default=None)
     arkesel_sender_id: Mapped[str | None] = mapped_column(String(20), default=None)
 
-    # Per-semester dues amounts, GHS. None means "fall back to the Settings
-    # env var default" (see app.services.academic).
-    dues_amount_ghs: Mapped[int | None] = mapped_column(default=None)
+    # Per-tier annual dues amounts, GHS. None means "fall back to the
+    # Settings env var default" (see app.services.academic). There is
+    # deliberately no separate flat/default amount -- a member whose tier
+    # can't be resolved is billed at the Continuing rate instead.
+    # NOTE: the dues_amount_ghs column still exists in the DB (added by
+    # b2c3d4e5f6a7) but is deliberately unmapped now that the flat fee has
+    # been removed -- same "don't drop a live column for a no-op cleanup"
+    # call as resend_from_email/ses_from_email/ses_region above.
     dues_amount_level_100: Mapped[int | None] = mapped_column(default=None)
     dues_amount_continuing: Mapped[int | None] = mapped_column(default=None)
     dues_amount_final_year: Mapped[int | None] = mapped_column(default=None)

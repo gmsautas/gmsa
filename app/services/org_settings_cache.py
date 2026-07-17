@@ -27,7 +27,6 @@ _FIELDS = (
     "email_provider",
     "brevo_from_email",
     "arkesel_sender_id",
-    "dues_amount_ghs",
     "dues_amount_level_100",
     "dues_amount_continuing",
     "dues_amount_final_year",

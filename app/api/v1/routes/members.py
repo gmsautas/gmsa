@@ -8,7 +8,7 @@ from app.models import DuesRecord, User
 from app.models.models import ROLES, USER_STATUSES
 from app.schemas.user import BulkMemberAction, UserAdminOut, UserAdminUpdate
 from app.services import academic
-from app.services.audience import current_semester_label
+from app.services.audience import current_dues_period_label
 
 router = APIRouter(prefix="/admin/members", tags=["members"])
 
@@ -21,7 +21,7 @@ MAX_MEMBERS_PER_PAGE = 200
 
 
 async def _dues_status_for(db: AsyncSession, user_id: int) -> str:
-    semester = current_semester_label()
+    semester = current_dues_period_label()
     result = await db.execute(
         select(DuesRecord).where(
             DuesRecord.user_id == user_id, DuesRecord.semester == semester
@@ -64,7 +64,7 @@ async def list_members(
     result = await db.execute(query)
     users = result.scalars().all()
 
-    semester = current_semester_label()
+    semester = current_dues_period_label()
     records_result = await db.execute(
         select(DuesRecord).where(
             DuesRecord.semester == semester,

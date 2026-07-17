@@ -1,9 +1,20 @@
+import asyncio
 import base64
 import math
 from datetime import datetime
 from urllib.parse import quote
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -14,6 +25,7 @@ from app.core.database import AsyncSessionLocal, get_db
 from app.core.deps_web import (
     Forbidden,
     PageRedirect,
+    _user_from_cookie,
     require_admin,
     require_member,
     require_superadmin,
@@ -1023,6 +1035,67 @@ async def election_results(election_id: int, request: Request, db: AsyncSession 
             "turnout_percent": round((voted_count / voters_count * 100), 1) if voters_count else 0.0,
         },
     )
+
+
+# Push interval for the results WebSocket below -- short enough that a vote
+# cast during a close election night shows up within a few seconds, long
+# enough that an open results tab left running doesn't hammer the DB.
+RESULTS_LIVE_INTERVAL_SECONDS = 3
+
+
+async def _election_results_snapshot(election_id: int) -> dict | None:
+    """One JSON-safe results payload, in its own short-lived session -- keeps
+    each poll tick independent so a slow client doesn't hold a DB connection
+    open between pushes. Returns None if the election no longer exists."""
+    async with AsyncSessionLocal() as db:
+        election = await db.get(Election, election_id)
+        if election is None:
+            return None
+        voters_count = (
+            await db.execute(select(func.count(Voter.id)).where(Voter.election_id == election_id))
+        ).scalar() or 0
+        voted_count = (
+            await db.execute(
+                select(func.count(Voter.id)).where(
+                    Voter.election_id == election_id, Voter.has_voted.is_(True)
+                )
+            )
+        ).scalar() or 0
+        results = await elections.compute_results(db, election_id)
+        return elections.serialize_results_payload(
+            voters_count=voters_count, voted_count=voted_count, results=results
+        )
+
+
+@admin_router.websocket("/{election_id}/results/ws")
+async def election_results_live(websocket: WebSocket, election_id: int):
+    """Pushes a fresh results snapshot to the open Results page every few
+    seconds so turnout and tallies update without a manual refresh -- votes
+    can land right up to an election's close, and an admin often has this
+    tab open while that happens. Polls the DB itself rather than subscribing
+    to a broadcast on vote-cast, since that would need a process-wide pub/sub
+    layer for what's a low-traffic, small-association election; only sends a
+    frame when the payload actually changed, so an idle socket is silent."""
+    async with AsyncSessionLocal() as db:
+        admin = await _user_from_cookie(websocket, db)
+    if admin is None or admin.role not in ("admin", "superadmin"):
+        await websocket.close(code=4401)
+        return
+
+    await websocket.accept()
+    last_payload: dict | None = None
+    try:
+        while True:
+            payload = await _election_results_snapshot(election_id)
+            if payload is None:
+                await websocket.close(code=4404)
+                return
+            if payload != last_payload:
+                await websocket.send_json(payload)
+                last_payload = payload
+            await asyncio.sleep(RESULTS_LIVE_INTERVAL_SECONDS)
+    except WebSocketDisconnect:
+        return
 
 
 # ─────────────────────────────────────────────

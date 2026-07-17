@@ -23,7 +23,7 @@
   </h3>
   <p class="text-sm text-ink-500 mb-4">
     Download a PDF financial statement for a date range, formatted for sharing with the wider
-    ummah -- the same statement format published to the community each semester.
+    ummah -- the same statement format published to the community each year.
   </p>
   <form method="get" action="/admin/finance/reports/download" class="flex flex-wrap items-end gap-4">
     <div>
@@ -45,22 +45,22 @@
 <div class="card p-6">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
     <h3 class="font-bold text-forest-900 text-lg flex items-center gap-2">
-      <i data-lucide="bar-chart-3" class="w-5 h-5 text-forest-600"></i> Semester Summary
+      <i data-lucide="bar-chart-3" class="w-5 h-5 text-forest-600"></i> Annual Summary
     </h3>
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-    <div class="stat-tile">
+  <div class="stat-strip mb-8" style="--cols:3">
+    <div class="stat-cell">
       <p class="stat-label">Total Income</p>
-      <p class="stat-value mt-2">{{ total_income | money }}</p>
+      <p class="stat-value">{{ total_income | money }}</p>
     </div>
-    <div class="stat-tile">
+    <div class="stat-cell">
       <p class="stat-label">Total Expenses</p>
-      <p class="stat-value mt-2">{{ total_expenses | money }}</p>
+      <p class="stat-value">{{ total_expenses | money }}</p>
     </div>
-    <div class="stat-tile">
+    <div class="stat-cell">
       <p class="stat-label">Net Balance</p>
-      <p class="stat-value mt-2 {% if net_balance < 0 %}text-red-600{% endif %}">{{ net_balance | money }}</p>
+      <p class="stat-value {% if net_balance < 0 %}text-red-600{% endif %}">{{ net_balance | money }}</p>
     </div>
   </div>
 

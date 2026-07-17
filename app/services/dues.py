@@ -7,10 +7,10 @@ DuesRecord rows already exist. This is the one place that bridges the two:
 call it whenever the admin should expect members to see a due (right after
 saving dues amounts, or on demand via "Generate Dues Now").
 
-Uses academic.effective_dues_amount, which already falls back to the flat
-dues_amount_ghs for members with no resolvable level/tier (e.g. bulk-upload
-accounts missing program_category), so a null level never means a member
-gets skipped here.
+Uses academic.effective_dues_amount, which already falls back to the
+Continuing-tier amount for members with no resolvable level/tier (e.g.
+bulk-upload accounts missing program_category), so a null level never means
+a member gets skipped here.
 """
 
 from decimal import Decimal
@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import DuesRecord, User
 from app.services import academic
-from app.services.audience import current_semester_label
+from app.services.audience import current_dues_period_label
 
 
 async def generate_dues_records(
@@ -30,9 +30,9 @@ async def generate_dues_records(
     amount: Decimal | int | None = None,
 ) -> int:
     """Ensure every active member has a DuesRecord for `semester` (default:
-    the current one). Members who already have one for that semester are
-    left untouched. Returns the number of rows created."""
-    semester = semester or current_semester_label()
+    the current academic-year billing period). Members who already have one
+    for that period are left untouched. Returns the number of rows created."""
+    semester = semester or current_dues_period_label()
 
     users_result = await db.execute(select(User).where(User.status == "active"))
     users = list(users_result.scalars().all())

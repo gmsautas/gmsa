@@ -14,7 +14,7 @@ from app.schemas.finance import (
     PaymentVerifyResponse,
 )
 from app.services import academic, ledger, paystack
-from app.services.audience import current_semester_label
+from app.services.audience import current_dues_period_label
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -61,7 +61,7 @@ async def initialize_payment(
                 detail="Authentication is required to pay dues",
             )
 
-        semester = current_semester_label()
+        semester = current_dues_period_label()
         result = await db.execute(
             select(DuesRecord).where(
                 DuesRecord.user_id == user.id, DuesRecord.semester == semester
@@ -72,15 +72,13 @@ async def initialize_payment(
         if dues_record is not None and dues_record.status == "paid":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Dues already paid for this semester",
+                detail="Dues already paid for this academic year",
             )
 
         if dues_record is None:
             dues_record = DuesRecord(
                 # Tier-aware (level_100/continuing/final_year), same as
-                # /admin/dues and /me/dues -- this was previously the flat
-                # dues_amount_ghs, silently ignoring the per-tier amounts an
-                # admin sets on /admin/settings' Dues Amounts section.
+                # /admin/dues and /me/dues.
                 amount=academic.effective_dues_amount(user),
                 currency="GHS",
                 status="unpaid",

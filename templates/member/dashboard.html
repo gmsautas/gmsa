@@ -13,49 +13,37 @@
 </div>
 
 <!-- Quick stats -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Dues Status</p>
-      <i data-lucide="credit-card" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">
+<div class="stat-strip mb-8" style="--cols:4">
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="credit-card" class="w-3 h-3"></i> Dues Status</p>
+    <p class="stat-value">
       {% if current_due %}
         {% if current_due.status == 'paid' %}Paid
         {% elif current_due.status == 'pending' %}Pending
         {% else %}Unpaid{% endif %}
       {% else %}No dues{% endif %}
     </p>
-    <p class="field-hint mt-1">
+    <p class="stat-sub">
       {% if current_due %}{{ current_due.semester }}{% else %}No record{% endif %}
     </p>
   </div>
 
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Upcoming RSVPs</p>
-      <i data-lucide="calendar-check" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ rsvped_events | length }}</p>
-    <p class="field-hint mt-1">Events you're attending</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="calendar-check" class="w-3 h-3"></i> Upcoming RSVPs</p>
+    <p class="stat-value">{{ rsvped_events | length }}</p>
+    <p class="stat-sub">Events you're attending</p>
   </div>
 
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Announcements</p>
-      <i data-lucide="megaphone" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ announcements | length }}</p>
-    <p class="field-hint mt-1">Recent updates</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="megaphone" class="w-3 h-3"></i> Announcements</p>
+    <p class="stat-value">{{ announcements | length }}</p>
+    <p class="stat-sub">Recent updates</p>
   </div>
 
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Program</p>
-      <i data-lucide="badge-check" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ user.grad_year or '—' }}</p>
-    <p class="field-hint mt-1">Grad year &middot; {{ user.program or '—' }}</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="badge-check" class="w-3 h-3"></i> Program</p>
+    <p class="stat-value">{{ user.grad_year or '—' }}</p>
+    <p class="stat-sub">Grad year &middot; {{ user.program or '—' }}</p>
   </div>
 </div>
 
@@ -71,7 +59,7 @@
             <i data-lucide="credit-card" class="w-5 h-5 text-forest-600"></i> Membership Dues
           </h3>
           <p class="text-sm text-ink-500 mt-1">
-            {% if current_due %}{{ current_due.semester }} semester dues{% else %}No dues on record{% endif %}
+            {% if current_due %}{{ current_due.semester }} membership dues{% else %}No dues on record{% endif %}
           </p>
         </div>
         {% if current_due %}

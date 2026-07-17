@@ -22,7 +22,7 @@
         <h2 class="font-bold text-forest-900 text-lg flex items-center gap-2">
           <i data-lucide="credit-card" class="w-5 h-5 text-forest-600"></i> Current Status
         </h2>
-        <p class="text-sm text-ink-500 mt-1">{{ current_due.semester }} semester dues</p>
+        <p class="text-sm text-ink-500 mt-1">{{ current_due.semester }} membership dues</p>
       </div>
       {% if current_due.status == 'paid' %}
         <span class="badge badge-green">Paid</span>
@@ -95,7 +95,7 @@
             <td data-label="Date">
               {% if due.paid_at %}{{ due.paid_at | datetimeformat }}{% else %}—{% endif %}
             </td>
-            <td data-label="Description">{{ due.semester }} Semester Dues</td>
+            <td data-label="Description">{{ due.semester }} Dues</td>
             <td data-label="Reference">{{ due.transaction_id or '—' }}</td>
             <td data-label="Status">
               {% if due.status == 'paid' %}

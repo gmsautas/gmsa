@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 from app.core.config import settings
+from app.services.audience import current_dues_period_label
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "templates"
 
@@ -49,3 +50,4 @@ templates.env.filters["timeformat"] = lambda v, f="%I:%M %p": (
 )
 
 templates.env.globals["current_year"] = lambda: datetime.date.today().year
+templates.env.globals["current_dues_period_label"] = current_dues_period_label

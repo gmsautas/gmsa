@@ -699,6 +699,53 @@ async def compute_results(db: AsyncSession, election_id: int) -> list[dict]:
     return results
 
 
+def serialize_results_payload(
+    *, voters_count: int, voted_count: int, results: list[dict]
+) -> dict:
+    """JSON-safe projection of compute_results's output (which holds live
+    Position/Candidate ORM rows), for pushing over the results-page
+    WebSocket in app.web.elections_web. Kept alongside compute_results so
+    the two stay in sync if the tally shape ever changes."""
+    turnout_percent = round((voted_count / voters_count * 100), 1) if voters_count else 0.0
+
+    positions = []
+    for r in results:
+        if r["contested"]:
+            positions.append(
+                {
+                    "position_id": r["position"].id,
+                    "contested": True,
+                    "total_votes": r["total_votes"],
+                    "candidates": [
+                        {
+                            "candidate_id": c["candidate"].id,
+                            "votes": c["votes"],
+                            "percent": c["percent"],
+                        }
+                        for c in r["candidates"]
+                    ],
+                }
+            )
+        else:
+            positions.append(
+                {
+                    "position_id": r["position"].id,
+                    "contested": False,
+                    "total_votes": r["total_votes"],
+                    "candidate_id": r["candidate"].id,
+                    "yes_votes": r["yes_votes"],
+                    "no_votes": r["no_votes"],
+                }
+            )
+
+    return {
+        "voters_count": voters_count,
+        "voted_count": voted_count,
+        "turnout_percent": turnout_percent,
+        "positions": positions,
+    }
+
+
 async def resend_token(db: AsyncSession, *, voter: Voter) -> str:
     """Reissue a voter's token without touching vote/has_voted state — for when the
     original token email never arrived. Does not nullify any cast vote.

@@ -25,39 +25,27 @@
   </div>
 </div>
 
-<!-- Stat tiles -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Total Members</p>
-      <i data-lucide="users" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ total_count }}</p>
-    <p class="field-hint mt-1">All registered records</p>
+<!-- Stat strip -->
+<div class="stat-strip mb-8" style="--cols:4">
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="users" class="w-3 h-3"></i> Total Members</p>
+    <p class="stat-value">{{ total_count }}</p>
+    <p class="stat-sub">All registered records</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Active Members</p>
-      <i data-lucide="user-check" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ active_count }}</p>
-    <p class="field-hint mt-1">Currently active accounts</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="user-check" class="w-3 h-3"></i> Active Members</p>
+    <p class="stat-value">{{ active_count }}</p>
+    <p class="stat-sub">Currently active accounts</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Pending / Unpaid Dues</p>
-      <i data-lucide="circle-dollar-sign" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ dues_unpaid }}</p>
-    <p class="field-hint mt-1">Need follow-up this semester</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="circle-dollar-sign" class="w-3 h-3"></i> Pending / Unpaid Dues</p>
+    <p class="stat-value">{{ dues_unpaid }}</p>
+    <p class="stat-sub">Need follow-up this year</p>
   </div>
-  <div class="stat-tile">
-    <div class="flex items-center justify-between">
-      <p class="stat-label">Graduating This Year</p>
-      <i data-lucide="graduation-cap" class="w-4 h-4 text-forest-400"></i>
-    </div>
-    <p class="stat-value mt-2">{{ graduating_count }}</p>
-    <p class="field-hint mt-1">Class of {{ current_year }}</p>
+  <div class="stat-cell">
+    <p class="stat-label"><i data-lucide="graduation-cap" class="w-3 h-3"></i> Graduating This Year</p>
+    <p class="stat-value">{{ graduating_count }}</p>
+    <p class="stat-sub">Class of {{ current_year }}</p>
   </div>
 </div>
 

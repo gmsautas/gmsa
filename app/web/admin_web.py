@@ -817,15 +817,16 @@ async def finance_momo(request: Request, db: AsyncSession = Depends(get_db)):
 def _default_report_range(today: date_type | None = None) -> tuple[date_type, date_type]:
     """Default date range for the downloadable financial statement.
 
-    There's no stored "semester start/end" anywhere in this codebase --
-    current_semester_label() (app/services/audience.py) only derives a label
-    (e.g. "Spring 2026") from a Jan-Jun / Jul-Dec split. Mirror that same
-    cutoff here so "current semester" means the same thing everywhere, and
-    run it through to today rather than a future semester-end date.
+    There's no stored "academic year start/end" anywhere in this codebase --
+    current_dues_period_label() (app/services/audience.py) only derives a
+    label (e.g. "2026/2027") from academic.current_academic_year_start's
+    Sept-Aug cutoff. Mirror that same cutoff here so "current year" means the
+    same thing everywhere, and run it through to today rather than a future
+    year-end date.
     """
     today = today or date_type.today()
-    start = date_type(today.year, 1, 1) if today.month <= 6 else date_type(today.year, 7, 1)
-    return start, today
+    start_year = academic.current_academic_year_start(today)
+    return date_type(start_year, 9, 1), today
 
 
 @router.get("/finance/reports")
@@ -2266,7 +2267,7 @@ async def settings_page(request: Request, db: AsyncSession = Depends(get_db)):
 
     dues_generated = request.query_params.get("dues_generated")
     if dues_generated:
-        flash = f"Settings saved. {dues_generated} member(s) billed for the current semester's dues."
+        flash = f"Settings saved. {dues_generated} member(s) billed for this academic year's dues."
     elif request.query_params.get("saved"):
         flash = "Settings saved."
     else:
@@ -2403,13 +2404,12 @@ async def update_settings_email(
 @router.post("/settings/dues")
 async def update_settings_dues(
     request: Request,
-    dues_amount_ghs: str = Form(""),
     dues_amount_level_100: str = Form(""),
     dues_amount_continuing: str = Form(""),
     dues_amount_final_year: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
-    # Routine per-semester adjustment -- admin-editable, not superadmin-gated.
+    # Routine per-year adjustment -- admin-editable, not superadmin-gated.
     try:
         admin = await require_admin(request, db)
     except PageRedirect as e:
@@ -2429,7 +2429,6 @@ async def update_settings_dues(
         org = OrgSettings(id=1)
         db.add(org)
 
-    org.dues_amount_ghs = _parse_int(dues_amount_ghs)
     org.dues_amount_level_100 = _parse_int(dues_amount_level_100)
     org.dues_amount_continuing = _parse_int(dues_amount_continuing)
     org.dues_amount_final_year = _parse_int(dues_amount_final_year)
@@ -2438,10 +2437,10 @@ async def update_settings_dues(
     await org_settings_cache.load_cache(db)
 
     # Saving amounts is the moment an admin expects members to start seeing
-    # a due -- backfill a DuesRecord for this semester for every active
-    # member who doesn't already have one (existing members/semesters are
-    # left untouched; effective_dues_amount falls back to the flat amount
-    # above for anyone with no resolvable level/tier).
+    # a due -- backfill a DuesRecord for this academic year for every active
+    # member who doesn't already have one (existing members/years are left
+    # untouched; effective_dues_amount falls back to the Continuing rate for
+    # anyone with no resolvable level/tier).
     created = await generate_dues_records(db)
 
     return RedirectResponse(f"/admin/settings?saved=1&dues_generated={created}", status_code=303)
@@ -2453,8 +2452,8 @@ async def generate_dues_now(
     db: AsyncSession = Depends(get_db),
 ):
     # On-demand version of the backfill above, for when an admin wants to
-    # (re)issue this semester's dues without changing the amounts -- e.g.
-    # after new members were added since the last save.
+    # (re)issue this year's dues without changing the amounts -- e.g. after
+    # new members were added since the last save.
     try:
         await require_admin(request, db)
     except PageRedirect as e:
