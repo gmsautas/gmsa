@@ -43,7 +43,7 @@
     {% if not r.contested %}
     <!-- Uncontested: yes/no -->
     <p class="text-sm text-ink-500 mb-4">
-      Uncontested — {{ r.candidate.name }} needed a majority Yes to be {{ "elected" if election.display_status == "closed" else "confirmed" }}.
+      Uncontested — {{ r.candidate.name }}
     </p>
     <div class="flex items-center gap-3 mb-4">
       {% if r.candidate.photo_url %}

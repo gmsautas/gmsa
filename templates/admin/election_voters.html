@@ -31,9 +31,7 @@
   <p class="text-sm text-ink-500 mb-4">
     Upload a CSV or Excel (.xlsx) file with <code>student_id</code> and <code>email</code> columns
     (<code>name</code>, <code>phone</code>, <code>program</code> and <code>program_category</code> are
-    optional but fill out a member's profile — including their auto-computed level and dues tier —
-    when included). Accounts are auto-created for students who don't already have one, and a voter
-    token is emailed to every new voter. Re-uploading is safe — existing voters are left untouched.
+    optional).
   </p>
   <form method="post" action="/admin/elections/{{ election.id }}/register/upload" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">
     <input type="file" name="file" accept=".csv,.xlsx" required class="field-input max-w-xs" />
@@ -45,13 +43,6 @@
       Don't send emails — give me a spreadsheet of credentials instead
     </label>
   </form>
-  <p class="text-xs text-ink-500 mt-2">
-    With that checked, new accounts get a temporary password instead of a setup-link email, and
-    nothing is emailed for this upload — after it finishes, a spreadsheet (first name, email,
-    phone, temporary password, voter token) will be ready to download from the results page for
-    you to distribute yourself (WhatsApp, in person, printed handout, etc). It's shown only once,
-    so download it before leaving that page.
-  </p>
 </div>
 
 <div x-data="{ selected: [] }">

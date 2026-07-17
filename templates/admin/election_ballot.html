@@ -158,7 +158,6 @@
                       <i data-lucide="x" class="w-3.5 h-3.5"></i>
                     </button>
                   </div>
-                  <p class="field-hint">Selecting a member pre-fills the name and photo below — both stay editable, since a campaign display name/photo can differ from the account.</p>
                 </div>
                 <div>
                   <label class="field-label">Name</label>
@@ -166,13 +165,12 @@
                 </div>
                 <div>
                   <label class="field-label">Bio <span class="text-ink-400 font-normal">(optional)</span></label>
-                  <textarea name="bio" class="field-textarea" placeholder="Campaign bio — write a fresh one even if this member has a profile bio"></textarea>
+                  <textarea name="bio" class="field-textarea"></textarea>
                 </div>
                 <div>
                   <label class="field-label">Photo <span class="text-ink-400 font-normal">(optional)</span></label>
                   <input name="photo" type="file" accept="image/*" class="field-input" />
                   <input name="photo_url" type="text" class="field-input mt-2" x-ref="candPhotoUrl" placeholder="Or paste/adjust an image URL&hellip;" />
-                  <p class="field-hint">Uploading a file above always takes priority over the URL field.</p>
                 </div>
                 <div>
                   <label class="field-label">Order <span class="text-ink-400 font-normal">(optional)</span></label>

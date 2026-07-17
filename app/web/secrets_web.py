@@ -15,14 +15,11 @@ router = APIRouter()
 MANAGED_KEYS = {
     "brevo_api_key": (
         "Brevo API Key",
-        "Used to send transactional email (welcome messages, password resets, voter tokens, comms "
-        "campaigns) when the active email provider is \"brevo\" (this page only manages the key, not "
-        "which provider is active — see the Email & SMS section of /admin/settings).",
+        "",
     ),
     "arkesel_api_key": (
         "Arkesel API Key",
-        "Used to send SMS campaigns and voter/dues reminders via Arkesel. The sender ID is managed on the "
-        "Email & SMS section of /admin/settings, not here.",
+        "",
     ),
 }
 
