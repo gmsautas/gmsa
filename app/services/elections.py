@@ -239,7 +239,7 @@ async def import_register(
 ) -> RegisterImportResult:
     """`on_row`, if given, is called synchronously after each row finishes
     processing as `on_row(index, total, info)` (1-based index) -- lets a
-    caller like scripts/local_gmail_import.py print live per-row progress
+    caller like infrastructure/gmail/local_gmail_import.py print live per-row progress
     instead of only a summary once every row is done. `info` always has
     "email" and "outcome" ("imported" | "skipped_duplicate" | "conflict")
     plus, when "outcome" is "imported": "created" (bool), "voter_created"
@@ -754,7 +754,7 @@ async def resend_token(db: AsyncSession, *, voter: Voter) -> str:
     fails to send, same as the original issuance — but unlike the original,
     a failed send here is re-raised as ResendError instead of swallowed, so
     callers that specifically care about "did they actually get it" (e.g.
-    scripts/local_gmail_import.py's --resend-token-for) can detect and report
+    infrastructure/gmail/local_gmail_import.py's --resend-token-for) can detect and report
     it rather than wrongly assuming success."""
     existing = (
         await db.execute(

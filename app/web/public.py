@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
@@ -34,9 +36,35 @@ def _scale_for_counter(amount: float) -> tuple[float, int, str]:
     return round(amount, 0), 0, ""
 
 
+class _EmptyBlock:
+    """Falsy stand-in for a PageContentBlock that hasn't been created yet
+    (e.g. an admin never edited that section, or the table's simply empty).
+    templates/public/index.html and about.html both use two patterns against
+    `blocks`: chained attribute access with a hardcoded fallback (
+    `blocks.home_hero.eyebrow or "default text"`) and truthiness guards (
+    `if blocks.home_about_teaser and blocks.home_about_teaser.extra`).
+    A real dict's missing-key lookup renders `blocks.home_hero` as Jinja's
+    Undefined, and Undefined raises on the next `.eyebrow` attribute access
+    instead of quietly returning something falsy -- this stand-in fixes that
+    by responding to any attribute with None (so the `or` fallback kicks in)
+    while still evaluating as False in a boolean context (so the truthiness
+    guards correctly treat it as "not configured")."""
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __getattr__(self, name: str):
+        return None
+
+
+_EMPTY_BLOCK = _EmptyBlock()
+
+
 async def _get_content_blocks(db: AsyncSession) -> dict[str, PageContentBlock]:
     result = await db.execute(select(PageContentBlock))
-    return {b.key: b for b in result.scalars().all()}
+    blocks: dict[str, PageContentBlock] = defaultdict(lambda: _EMPTY_BLOCK)
+    blocks.update({b.key: b for b in result.scalars().all()})
+    return blocks
 
 
 async def _get_org(db: AsyncSession) -> OrgSettings | None:

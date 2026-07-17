@@ -18,7 +18,7 @@ STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "static"
 # real, likely-already-occurring bug, not a hypothetical.
 # STOPGAP (do this now, before/at Railway cutover): mount a Railway
 # persistent volume at static/uploads/ on the web service. See
-# backend/scripts/RAILWAY_DEPLOYMENT_NOTES.md for details.
+# infrastructure/railway/RAILWAY_DEPLOYMENT_NOTES.md for details.
 # REAL FIX (separate, larger, future phase — do not attempt as part of this
 # change): migrate storage to S3/R2-compatible object storage so uploads
 # survive redeploys/restarts regardless of host. Ideally sequence that after

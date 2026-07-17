@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     # outbound SMTP ports -- it's the provider the live hosted app actually
     # uses. "gmail" uses real SMTP and only works from a network that doesn't
     # block ports 587/465 — i.e. NOT from a hosted deployment, only from a
-    # local machine — see scripts/local_gmail_import.py.
+    # local machine — see infrastructure/gmail/local_gmail_import.py.
     # NOTE: this env var is only the fallback default now — the active value
     # can be overridden at runtime via /admin/settings' Email & SMS section
     # (see app.services.org_settings_cache), no redeploy required.
@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     brevo_api_key: str = ""
     brevo_from_email: str = "GMSA UTAS <no-reply@gmsautas.org>"
 
-    # Gmail SMTP — local-only bulk-send path (see scripts/local_gmail_import.py).
+    # Gmail SMTP — local-only bulk-send path (see infrastructure/gmail/local_gmail_import.py).
     # Up to 5 accounts can be configured (account 1 is required, 2-5 are
     # optional); resend_client drains account 1 completely (up to
     # gmail_daily_cap_per_account) before ever touching account 2, then so on

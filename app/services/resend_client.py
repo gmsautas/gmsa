@@ -1,10 +1,10 @@
 """Transactional email, sent via Brevo or Gmail SMTP depending on
 EMAIL_PROVIDER. Brevo is a REST API (no SMTP), so it's unaffected by hosts
 that block outbound SMTP ports. Gmail uses real SMTP and only works from a
-network that doesn't block ports 587/465 — see scripts/local_gmail_import.py
-for the local-only bulk-send flow that uses it. Kept as one entry point
-(`send_email`) so callers don't need to know which provider is actually
-configured.
+network that doesn't block ports 587/465 — see
+infrastructure/gmail/local_gmail_import.py for the local-only bulk-send flow
+that uses it. Kept as one entry point (`send_email`) so callers don't need to
+know which provider is actually configured.
 
 Docs: https://developers.brevo.com/reference/sendtransacemail
 """
@@ -31,12 +31,15 @@ BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 GMAIL_SMTP_HOST = "smtp.gmail.com"
 GMAIL_SMTP_PORT = 587
 # Gmail throttles/flags bursts even under the daily cap — keep a floor between
-# individual sends when running a bulk import through scripts/local_gmail_import.py.
+# individual sends when running a bulk import through
+# infrastructure/gmail/local_gmail_import.py.
 GMAIL_MIN_SECONDS_BETWEEN_SENDS = 1.2
-# Send counters persist here (relative to CWD, i.e. backend/ when run via
-# scripts/local_gmail_import.py) so re-running later the same day continues
+# Send counters persist here, relative to CWD -- the app (WORKDIR /app in the
+# container) and infrastructure/gmail/local_gmail_import.py (meant to be run
+# from the repo root) both have CWD == repo root, so this one relative path
+# resolves to the same file for both. Re-running later the same day continues
 # counting toward each account's daily cap instead of resetting to zero.
-GMAIL_STATE_FILE = Path(".gmail_send_state.json")
+GMAIL_STATE_FILE = Path("infrastructure/gmail/.gmail_send_state.json")
 
 _last_gmail_send_at_by_account: dict[str, float] = {}
 
@@ -220,14 +223,14 @@ def _send_via_gmail_sync(*, to: list[str], subject: str, html: str) -> None:
 
 def gmail_account_usage() -> dict[str, int]:
     """Today's persisted per-account send counts (see GMAIL_STATE_FILE), for
-    reporting from scripts/local_gmail_import.py."""
+    reporting from infrastructure/gmail/local_gmail_import.py."""
     return dict(_load_gmail_state()["counts"])
 
 
 def gmail_disabled_accounts() -> list[str]:
     """Accounts disabled today after a bad-credentials failure. Delete
-    backend/.gmail_send_state.json (or edit out just that account) after
-    fixing the App Password to let it be tried again today."""
+    infrastructure/gmail/.gmail_send_state.json (or edit out just that
+    account) after fixing the App Password to let it be tried again today."""
     return list(_load_gmail_state()["disabled"])
 
 

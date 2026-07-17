@@ -212,7 +212,7 @@ async def reset_and_resend_welcome_email(db: AsyncSession, user: User, *, base_u
     """For an existing user whose original account-setup email never
     arrived. Issues a fresh setup link (invalidating any earlier one) and
     emails it. Raises ResendError on a failed send so callers (e.g.
-    scripts/local_gmail_import.py's --resend-account-email-for) can detect
+    infrastructure/gmail/local_gmail_import.py's --resend-account-email-for) can detect
     and report it rather than wrongly assuming success."""
     await password_reset.send_account_setup_link(db, user=user, base_url=base_url)
 

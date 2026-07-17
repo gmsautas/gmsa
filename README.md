@@ -164,13 +164,13 @@ Railway's injected `$PORT`.
    Railway's URL format automatically.
 3. In the web service's **Variables**, set at minimum `DATABASE_URL` and
    `SECRET_KEY`, plus any optional integrations you want live (see the table
-   above, and `scripts/RAILWAY_DEPLOYMENT_NOTES.md` for the full list
+   above, and `infrastructure/railway/RAILWAY_DEPLOYMENT_NOTES.md` for the full list
    mirroring `render.yaml`'s).
 4. **Before going live, attach a persistent Volume mounted at
    `/app/static/uploads`.** Without one, uploaded profile/candidate photos
    and payment-proof screenshots are lost on every redeploy — container
    storage is ephemeral on Railway (same issue exists on Render today, unfixed).
-   See `scripts/RAILWAY_DEPLOYMENT_NOTES.md` for details; this is a
+   See `infrastructure/railway/RAILWAY_DEPLOYMENT_NOTES.md` for details; this is a
    stopgap, not the eventual real fix (object storage), but it's cheap and
    should happen at cutover rather than after data is already lost.
 5. Deploy. `start.sh` runs migrations on every deploy automatically.

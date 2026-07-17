@@ -140,7 +140,7 @@ async def send_account_setup_link(db: AsyncSession, *, user: User, base_url: str
     request_reset, the caller already knows this account exists (it just
     created or looked it up), so there's no anti-enumeration silent-return
     here, and a failed send is raised rather than swallowed so callers (the
-    register-import flow, admin actions, scripts/local_gmail_import.py) can
+    register-import flow, admin actions, infrastructure/gmail/local_gmail_import.py) can
     detect and report it instead of silently losing the notification."""
     await _issue_and_email_link(
         db,
