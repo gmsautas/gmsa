@@ -39,3 +39,4 @@ static/uploads/
 
 scripts/*
 tests/
+db_backups/

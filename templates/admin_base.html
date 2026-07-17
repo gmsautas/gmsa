@@ -120,11 +120,6 @@
         </a>
         {% endif %}
       </nav>
-
-      <div class="p-4 border-t border-cream-300 space-y-1">
-        <a href="/" class="sidebar-link"><i data-lucide="arrow-left" class="w-[18px] h-[18px]"></i> Back to Website</a>
-        <a href="/admin/logout" class="sidebar-link"><i data-lucide="log-out" class="w-[18px] h-[18px]"></i> Log Out</a>
-      </div>
     </aside>
 
     <div class="app-main">
@@ -150,6 +145,9 @@
               <p class="font-semibold text-forest-900 leading-none">{{ admin.name }}</p>
               <p class="text-xs text-ink-500">{{ 'Super Admin' if admin.role == 'superadmin' else 'Admin' }}</p>
             </div>
+            <a href="/admin/logout" class="p-2 rounded-md text-ink-500 hover:bg-cream-200 hover:text-red-600 shrink-0" title="Log out" aria-label="Log out">
+              <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
+            </a>
           </div>
         </div>
       </header>

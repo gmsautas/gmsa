@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 41076fd6fadf
+Revision ID: 949cc813ae83
 Revises: 
-Create Date: 2026-07-09 15:52:31.029828
+Create Date: 2026-07-17 07:52:17.065588
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '41076fd6fadf'
+revision: str = '949cc813ae83'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -37,6 +37,16 @@ def upgrade() -> None:
     sa.Column('date', sa.Date(), nullable=False),
     sa.Column('audience', sa.String(length=120), nullable=False),
     sa.Column('link_url', sa.String(length=500), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('email_send_failures',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('provider', sa.String(length=20), nullable=False),
+    sa.Column('recipient', sa.String(length=255), nullable=False),
+    sa.Column('purpose', sa.String(length=120), nullable=False),
+    sa.Column('error', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -90,6 +100,12 @@ def upgrade() -> None:
     sa.Column('bank_name', sa.String(length=160), nullable=True),
     sa.Column('bank_account_name', sa.String(length=160), nullable=True),
     sa.Column('bank_account_number', sa.String(length=64), nullable=True),
+    sa.Column('email_provider', sa.String(length=20), nullable=True),
+    sa.Column('brevo_from_email', sa.String(length=255), nullable=True),
+    sa.Column('arkesel_sender_id', sa.String(length=20), nullable=True),
+    sa.Column('dues_amount_level_100', sa.Integer(), nullable=True),
+    sa.Column('dues_amount_continuing', sa.Integer(), nullable=True),
+    sa.Column('dues_amount_final_year', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -228,6 +244,7 @@ def upgrade() -> None:
     sa.Column('starts_at', sa.DateTime(), nullable=False),
     sa.Column('ends_at', sa.DateTime(), nullable=False),
     sa.Column('auto_publish', sa.Boolean(), nullable=False),
+    sa.Column('is_test', sa.Boolean(), nullable=False),
     sa.Column('created_by_id', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
@@ -303,6 +320,8 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'event_id', name='uq_rsvp_user_event')
     )
+    op.create_index(op.f('ix_rsvps_event_id'), 'rsvps', ['event_id'], unique=False)
+    op.create_index(op.f('ix_rsvps_user_id'), 'rsvps', ['user_id'], unique=False)
     op.create_table('sms_campaigns',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('audience', sa.String(length=160), nullable=False),
@@ -341,7 +360,10 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['verified_by_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_transactions_project_id'), 'transactions', ['project_id'], unique=False)
     op.create_index(op.f('ix_transactions_reference'), 'transactions', ['reference'], unique=True)
+    op.create_index(op.f('ix_transactions_status'), 'transactions', ['status'], unique=False)
+    op.create_index(op.f('ix_transactions_user_id'), 'transactions', ['user_id'], unique=False)
     op.create_table('committee_members',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('committee_id', sa.Integer(), nullable=False),
@@ -356,6 +378,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_committee_members_committee_id'), 'committee_members', ['committee_id'], unique=False)
     op.create_table('dues_records',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -373,6 +396,23 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'semester', name='uq_dues_user_semester')
     )
+    op.create_index(op.f('ix_dues_records_status'), 'dues_records', ['status'], unique=False)
+    op.create_index(op.f('ix_dues_records_user_id'), 'dues_records', ['user_id'], unique=False)
+    op.create_table('email_campaign_recipients',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('campaign_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('status', sa.String(length=20), nullable=False),
+    sa.Column('error', sa.Text(), nullable=True),
+    sa.Column('sent_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['campaign_id'], ['email_campaigns.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_email_campaign_recipients_campaign_id'), 'email_campaign_recipients', ['campaign_id'], unique=False)
     op.create_table('positions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('election_id', sa.Integer(), nullable=False),
@@ -384,6 +424,22 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('election_id', 'title', name='uq_position_election_title')
     )
+    op.create_index(op.f('ix_positions_election_id'), 'positions', ['election_id'], unique=False)
+    op.create_table('sms_campaign_recipients',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('campaign_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('phone', sa.String(length=32), nullable=False),
+    sa.Column('status', sa.String(length=20), nullable=False),
+    sa.Column('error', sa.Text(), nullable=True),
+    sa.Column('sent_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['campaign_id'], ['sms_campaigns.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_sms_campaign_recipients_campaign_id'), 'sms_campaign_recipients', ['campaign_id'], unique=False)
     op.create_table('voters',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('election_id', sa.Integer(), nullable=False),
@@ -397,6 +453,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('election_id', 'user_id', name='uq_voter_election_user')
     )
     op.create_index(op.f('ix_voters_election_id'), 'voters', ['election_id'], unique=False)
+    op.create_index(op.f('ix_voters_user_id'), 'voters', ['user_id'], unique=False)
     op.create_table('candidates',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('position_id', sa.Integer(), nullable=False),
@@ -411,6 +468,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_candidates_position_id'), 'candidates', ['position_id'], unique=False)
+    op.create_index(op.f('ix_candidates_user_id'), 'candidates', ['user_id'], unique=False)
     op.create_table('voter_tokens',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('voter_id', sa.Integer(), nullable=False),
@@ -424,6 +483,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_voter_tokens_token_hash'), 'voter_tokens', ['token_hash'], unique=True)
+    op.create_index(op.f('ix_voter_tokens_voter_id'), 'voter_tokens', ['voter_id'], unique=False)
     op.create_table('votes',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('election_id', sa.Integer(), nullable=False),
@@ -446,215 +506,52 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['voter_token_id'], ['voter_tokens.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_votes_candidate_id'), 'votes', ['candidate_id'], unique=False)
+    op.create_index(op.f('ix_votes_election_id'), 'votes', ['election_id'], unique=False)
+    op.create_index(op.f('ix_votes_position_id'), 'votes', ['position_id'], unique=False)
     op.create_index(op.f('ix_votes_voter_id'), 'votes', ['voter_id'], unique=False)
+    op.create_index(op.f('ix_votes_voter_token_id'), 'votes', ['voter_token_id'], unique=False)
     op.create_index('uq_active_vote_voter_position', 'votes', ['voter_id', 'position_id'], unique=True, postgresql_where=sa.text('is_nullified = false'))
     # ### end Alembic commands ###
-
-    _seed_page_content()
-
-
-def _seed_page_content() -> None:
-    """Default copy for the home/About page content-management blocks, so a
-    fresh site shows real wording instead of relying on template fallbacks."""
-    blocks_table = sa.table(
-        "page_content_blocks",
-        sa.column("key", sa.String),
-        sa.column("eyebrow", sa.String),
-        sa.column("heading", sa.String),
-        sa.column("body", sa.Text),
-        sa.column("extra", sa.JSON),
-    )
-    op.bulk_insert(
-        blocks_table,
-        [
-            {
-                "key": "home_hero",
-                "eyebrow": "Welcome to GMSA UTAS",
-                "heading": "Connecting Muslim students across UTAS",
-                "body": (
-                    "Faith, brotherhood and sisterhood, and service to campus and community — "
-                    "join us for weekly halaqahs, Friday khutbahs, welfare support, and a "
-                    "community that feels like home away from home."
-                ),
-                "extra": None,
-            },
-            {
-                "key": "home_about_teaser",
-                "eyebrow": "Who We Are",
-                "heading": "Building community, rooted in faith",
-                "body": (
-                    "GMSA UTAS brings together Muslim students, staff and alumni across campus "
-                    "for worship, learning and service. From daily prayer facilities and weekly "
-                    "halaqahs to welfare support and large-scale community events, we aim to "
-                    "make campus life easier and more meaningful for every Muslim student."
-                ),
-                "extra": {
-                    "bullets": [
-                        "Daily prayer facilities and weekly Jumu'ah khutbah",
-                        "Halaqahs, mentorship and welfare support for members",
-                        "Transparent dues, donations and project funding",
-                    ]
-                },
-            },
-            {
-                "key": "home_donate_cta",
-                "eyebrow": None,
-                "heading": "Support our mission",
-                "body": (
-                    "Every contribution — big or small — helps fund welfare support, campus "
-                    "facilities and community programs. Donations are processed securely via "
-                    "Paystack."
-                ),
-                "extra": None,
-            },
-            {
-                "key": "about_header",
-                "eyebrow": "About Us",
-                "heading": "Our Story, Mission & Vision",
-                "body": (
-                    "GMSA UTAS has been a home for Muslim students at the University of "
-                    "Technology and Applied Sciences for nearly two decades — built on faith, "
-                    "brotherhood and sisterhood, and service."
-                ),
-                "extra": None,
-            },
-            {
-                "key": "about_mission",
-                "eyebrow": "Our Mission",
-                "heading": "Why we exist",
-                "body": (
-                    "To foster a vibrant, welcoming Islamic community for students at UTAS — "
-                    "nurturing faith, supporting academic success, and serving the wider campus."
-                ),
-                "extra": None,
-            },
-            {
-                "key": "about_vision",
-                "eyebrow": "Our Vision",
-                "heading": "Where we're headed",
-                "body": (
-                    "A campus where every Muslim student feels at home, supported in their "
-                    "worship, studies and personal growth."
-                ),
-                "extra": None,
-            },
-            {
-                "key": "about_closing_cta",
-                "eyebrow": None,
-                "heading": "Become part of our story",
-                "body": (
-                    "Whether you're new to campus or have been here for years, there's a place "
-                    "for you in GMSA UTAS. Join us as a member, or reach out if you have "
-                    "questions."
-                ),
-                "extra": None,
-            },
-        ],
-    )
-
-    pillars_table = sa.table(
-        "about_pillars",
-        sa.column("icon", sa.String),
-        sa.column("title", sa.String),
-        sa.column("description", sa.Text),
-        sa.column("order_index", sa.Integer),
-    )
-    op.bulk_insert(
-        pillars_table,
-        [
-            {
-                "icon": "moon-star",
-                "title": "Worship & Da'wah",
-                "description": (
-                    "Daily prayer facilities, weekly Jumu'ah khutbahs, and regular halaqahs to "
-                    "nurture faith and welcome new Muslims to the community."
-                ),
-                "order_index": 0,
-            },
-            {
-                "icon": "book-open",
-                "title": "Education",
-                "description": (
-                    "Islamic studies circles, past exam resources, and peer mentorship to help "
-                    "members succeed academically and spiritually."
-                ),
-                "order_index": 1,
-            },
-            {
-                "icon": "hand-heart",
-                "title": "Welfare",
-                "description": (
-                    "Financial and emotional support for members going through difficult "
-                    "times, funded by dues, donations and our welfare fund."
-                ),
-                "order_index": 2,
-            },
-            {
-                "icon": "users",
-                "title": "Community",
-                "description": (
-                    "Events, Eid celebrations and social activities that bring members "
-                    "together and build lasting friendships across campus."
-                ),
-                "order_index": 3,
-            },
-        ],
-    )
-
-    milestones_table = sa.table(
-        "milestones",
-        sa.column("year", sa.String),
-        sa.column("description", sa.Text),
-        sa.column("order_index", sa.Integer),
-    )
-    op.bulk_insert(
-        milestones_table,
-        [
-            {
-                "year": "2009",
-                "description": "GMSA founded with 30 members, meeting informally for Jumu'ah prayers on campus.",
-                "order_index": 0,
-            },
-            {
-                "year": "2015",
-                "description": "First permanent musallah space secured at the Student Centre, enabling daily congregational prayer.",
-                "order_index": 1,
-            },
-            {
-                "year": "2020",
-                "description": "Online halaqahs launched to keep the community connected during a period of remote learning.",
-                "order_index": 2,
-            },
-            {
-                "year": "2023",
-                "description": "Welfare fund formalised, providing structured financial and emotional support for members in need.",
-                "order_index": 3,
-            },
-            {
-                "year": "2026",
-                "description": "GMSA UTAS now has 400+ active members and runs more than 48 programs per year across worship, education, welfare and community.",
-                "order_index": 4,
-            },
-        ],
-    )
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index('uq_active_vote_voter_position', table_name='votes', postgresql_where=sa.text('is_nullified = false'))
+    op.drop_index(op.f('ix_votes_voter_token_id'), table_name='votes')
     op.drop_index(op.f('ix_votes_voter_id'), table_name='votes')
+    op.drop_index(op.f('ix_votes_position_id'), table_name='votes')
+    op.drop_index(op.f('ix_votes_election_id'), table_name='votes')
+    op.drop_index(op.f('ix_votes_candidate_id'), table_name='votes')
     op.drop_table('votes')
+    op.drop_index(op.f('ix_voter_tokens_voter_id'), table_name='voter_tokens')
     op.drop_index(op.f('ix_voter_tokens_token_hash'), table_name='voter_tokens')
     op.drop_table('voter_tokens')
+    op.drop_index(op.f('ix_candidates_user_id'), table_name='candidates')
+    op.drop_index(op.f('ix_candidates_position_id'), table_name='candidates')
     op.drop_table('candidates')
+    op.drop_index(op.f('ix_voters_user_id'), table_name='voters')
     op.drop_index(op.f('ix_voters_election_id'), table_name='voters')
     op.drop_table('voters')
+    op.drop_index(op.f('ix_sms_campaign_recipients_campaign_id'), table_name='sms_campaign_recipients')
+    op.drop_table('sms_campaign_recipients')
+    op.drop_index(op.f('ix_positions_election_id'), table_name='positions')
     op.drop_table('positions')
+    op.drop_index(op.f('ix_email_campaign_recipients_campaign_id'), table_name='email_campaign_recipients')
+    op.drop_table('email_campaign_recipients')
+    op.drop_index(op.f('ix_dues_records_user_id'), table_name='dues_records')
+    op.drop_index(op.f('ix_dues_records_status'), table_name='dues_records')
     op.drop_table('dues_records')
+    op.drop_index(op.f('ix_committee_members_committee_id'), table_name='committee_members')
     op.drop_table('committee_members')
+    op.drop_index(op.f('ix_transactions_user_id'), table_name='transactions')
+    op.drop_index(op.f('ix_transactions_status'), table_name='transactions')
     op.drop_index(op.f('ix_transactions_reference'), table_name='transactions')
+    op.drop_index(op.f('ix_transactions_project_id'), table_name='transactions')
     op.drop_table('transactions')
     op.drop_table('sms_campaigns')
+    op.drop_index(op.f('ix_rsvps_user_id'), table_name='rsvps')
+    op.drop_index(op.f('ix_rsvps_event_id'), table_name='rsvps')
     op.drop_table('rsvps')
     op.drop_index(op.f('ix_password_reset_tokens_user_id'), table_name='password_reset_tokens')
     op.drop_index(op.f('ix_password_reset_tokens_token_hash'), table_name='password_reset_tokens')
@@ -681,6 +578,7 @@ def downgrade() -> None:
     op.drop_table('milestones')
     op.drop_table('leadership_boards')
     op.drop_table('events')
+    op.drop_table('email_send_failures')
     op.drop_table('announcements')
     op.drop_table('about_pillars')
     # ### end Alembic commands ###

@@ -1,7 +1,7 @@
 {% extends "member_base.html" %}
 
-{% block title %}Dues &amp; Payments{% endblock %}
-{% block page_title %}Dues &amp; Payments{% endblock %}
+{% block title %}Dues {% endblock %}
+{% block page_title %}Dues {% endblock %}
 
 {% block content %}
 
@@ -115,7 +115,7 @@
               {% elif due.status == 'pending' %}
                 <span class="field-hint">Awaiting verification</span>
               {% else %}
-                <div class="flex justify-end gap-2">
+                <div class="flex flex-wrap justify-end gap-2 min-w-0">
                   <button class="btn btn-secondary btn-sm" onclick="initDuesPayment({{ due.id }})">
                     <i data-lucide="wallet" class="w-3.5 h-3.5"></i> Paystack
                   </button>

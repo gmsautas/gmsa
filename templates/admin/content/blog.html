@@ -32,7 +32,6 @@
     <textarea name="excerpt" class="field-textarea" placeholder="A short summary shown on the blog listing card" required>{{ p.excerpt }}</textarea>
   </div>
   {% else %}
-  <p class="field-hint">The URL slug and listing excerpt are generated automatically from the title and content — you can fine-tune them later from Edit.</p>
   {% endif %}
   <div class="grid grid-cols-2 gap-4">
     <div>
@@ -44,7 +43,6 @@
       <input name="icon" type="text" class="field-input" value="{{ p.icon if p else 'book-open' }}" />
     </div>
   </div>
-  <p class="field-hint">Byline: posted as <strong>{{ p.author_name if p else admin.name }}</strong>{% if (p.author_role if p else admin.title) %} &middot; {{ p.author_role if p else admin.title }}{% endif %} — set automatically from your account. Update your title from Members &rarr; Edit.</p>
   <div class="grid grid-cols-2 gap-4">
     <div>
       <label class="field-label">Date</label>
@@ -63,7 +61,6 @@
   <div>
     <label class="field-label">Arabic Content <span class="text-ink-400 font-normal">(optional)</span></label>
     <textarea name="content_ar" class="field-textarea" rows="4" dir="rtl" lang="ar" placeholder="النص العربي هنا&hellip;">{{ ((p.content_ar or []) | join('\n')) if p else '' }}</textarea>
-    <p class="field-hint">Optional — shown as a right-to-left Arabic section below the English content.</p>
   </div>
   <div>
     <label class="field-label">Cover Image <span class="text-ink-400 font-normal">(optional)</span></label>
@@ -71,7 +68,6 @@
     <img src="{{ p.image_url }}" alt="" class="w-full h-28 object-cover rounded-lg mb-2" />
     {% endif %}
     <input name="image" type="file" accept="image/*" class="field-input" />
-    <p class="field-hint">Only shown on the full post page — never on blog listing or homepage cards.{% if p %} Leave blank to keep the current image.{% endif %}</p>
   </div>
   <div>
     <label class="field-label">Status</label>

@@ -88,15 +88,27 @@
 
       <div>
         <label for="reg-password" class="field-label">Password</label>
-        <input id="reg-password" name="password" type="password" class="field-input"
-               placeholder="••••••••" required />
+        <div class="relative" x-data="{ show: false }">
+          <input id="reg-password" name="password" :type="show ? 'text' : 'password'" class="field-input pr-10"
+                 placeholder="••••••••" required />
+          <button type="button" @click="show = !show" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-forest-700" :aria-label="show ? 'Hide password' : 'Show password'" tabindex="-1">
+            <i data-lucide="eye" x-show="!show" class="w-4 h-4"></i>
+            <i data-lucide="eye-off" x-show="show" x-cloak class="w-4 h-4"></i>
+          </button>
+        </div>
         <p class="field-hint">At least 8 characters</p>
       </div>
 
       <div>
         <label for="reg-confirm-password" class="field-label">Confirm Password</label>
-        <input id="reg-confirm-password" name="confirm_password" type="password" class="field-input"
-               placeholder="••••••••" required />
+        <div class="relative" x-data="{ show: false }">
+          <input id="reg-confirm-password" name="confirm_password" :type="show ? 'text' : 'password'" class="field-input pr-10"
+                 placeholder="••••••••" required />
+          <button type="button" @click="show = !show" class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-forest-700" :aria-label="show ? 'Hide password' : 'Show password'" tabindex="-1">
+            <i data-lucide="eye" x-show="!show" class="w-4 h-4"></i>
+            <i data-lucide="eye-off" x-show="show" x-cloak class="w-4 h-4"></i>
+          </button>
+        </div>
       </div>
 
       <label class="flex items-start gap-2 text-sm text-ink-700">
