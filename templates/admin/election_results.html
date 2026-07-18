@@ -13,9 +13,14 @@
       Aggregate tallies only — nullified votes are excluded, and individual ballots are never shown here or anywhere else.
     </p>
   </div>
-  <span id="live-indicator" class="chip" data-state="connecting">
-    <i data-lucide="loader-circle" class="w-3 h-3 animate-spin"></i> Connecting…
-  </span>
+  <div class="flex items-center gap-3">
+    <a href="/admin/elections/{{ election.id }}/results/download" class="btn btn-primary">
+      <i data-lucide="download" class="w-4 h-4"></i> Download Results
+    </a>
+    <span id="live-indicator" class="chip" data-state="connecting">
+      <i data-lucide="loader-circle" class="w-3 h-3 animate-spin"></i> Connecting…
+    </span>
+  </div>
 </div>
 
 <!-- Turnout -->

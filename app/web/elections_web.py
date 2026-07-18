@@ -1,6 +1,8 @@
 import asyncio
 import base64
+import io
 import math
+import re
 from datetime import datetime
 from urllib.parse import quote
 
@@ -15,7 +17,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +33,16 @@ from app.core.deps_web import (
     require_superadmin,
 )
 from app.core.templates import templates
-from app.models.models import ELECTION_STATUSES, Candidate, Election, Position, User, Vote, Voter
+from app.models.models import (
+    ELECTION_STATUSES,
+    Candidate,
+    Election,
+    OrgSettings,
+    Position,
+    User,
+    Vote,
+    Voter,
+)
 from app.services import elections, import_jobs, member_provisioning, resend_client
 from app.services import storage
 from app.services.elections import ElectionError
@@ -1035,6 +1046,223 @@ async def election_results(election_id: int, request: Request, db: AsyncSession 
             "turnout_percent": round((voted_count / voters_count * 100), 1) if voters_count else 0.0,
         },
     )
+
+
+@admin_router.get("/{election_id}/results/download", name="admin_election_results_download")
+async def election_results_download(
+    election_id: int, request: Request, db: AsyncSession = Depends(get_db)
+):
+    try:
+        await require_admin(request, db)
+    except PageRedirect as e:
+        return RedirectResponse(e.url, status_code=302)
+
+    election = await db.get(Election, election_id)
+    if election is None:
+        return RedirectResponse("/admin/elections", status_code=303)
+
+    voters_count = (
+        await db.execute(select(func.count(Voter.id)).where(Voter.election_id == election_id))
+    ).scalar() or 0
+    voted_count = (
+        await db.execute(
+            select(func.count(Voter.id)).where(
+                Voter.election_id == election_id, Voter.has_voted.is_(True)
+            )
+        )
+    ).scalar() or 0
+    results = await elections.compute_results(db, election_id)
+    org = await db.get(OrgSettings, 1)
+
+    pdf_bytes = _render_election_results_pdf(
+        election=election,
+        org=org,
+        voters_count=voters_count,
+        voted_count=voted_count,
+        results=results,
+    )
+    safe_title = re.sub(r"[^A-Za-z0-9]+", "-", election.title).strip("-") or "Election"
+    filename = f"GMSA-{safe_title}-Results.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _render_election_results_pdf(
+    *, election: Election, org, voters_count: int, voted_count: int, results: list[dict]
+) -> bytes:
+    from reportlab.lib.colors import HexColor
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    forest = HexColor("#1E4F3A")  # --forest-700, matches the app's admin UI green
+    ink = HexColor("#111827")
+    gray = HexColor("#6B7280")
+    green = HexColor("#15803D")
+
+    left = 20 * mm
+    right = width - 20 * mm
+    bottom_margin = 30 * mm
+    row_h = 7 * mm
+
+    org_name = (org.full_name if org else None) or "GMSA UTAS"
+    tagline = (org.tagline if org else None) or ""
+
+    is_closed = elections.effective_status(election) == "closed"
+    turnout_percent = round((voted_count / voters_count * 100), 1) if voters_count else 0.0
+
+    def draw_letterhead() -> float:
+        top = height - 20 * mm
+        logo_path = storage.STATIC_DIR / "img" / "logo.png"
+        text_x = left
+        try:
+            if logo_path.exists():
+                c.drawImage(
+                    str(logo_path),
+                    left,
+                    top - 16 * mm,
+                    width=16 * mm,
+                    height=16 * mm,
+                    preserveAspectRatio=True,
+                    mask="auto",
+                )
+                text_x = left + 20 * mm
+        except Exception:
+            # A malformed/unsupported image must never break report generation --
+            # fall back to a text-only letterhead.
+            text_x = left
+
+        c.setFillColor(forest)
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(text_x, top - 5 * mm, org_name)
+        c.setFont("Helvetica", 9)
+        c.setFillColor(gray)
+        if tagline:
+            c.drawString(text_x, top - 10 * mm, tagline)
+
+        c.setStrokeColor(forest)
+        c.setLineWidth(1.2)
+        c.line(left, top - 18 * mm, right, top - 18 * mm)
+
+        c.setFillColor(ink)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawCentredString(width / 2, top - 25 * mm, f"ELECTION RESULTS — {election.title}".upper())
+        c.setFont("Helvetica", 8)
+        c.setFillColor(gray)
+        status_label = "FINAL (CLOSED)" if is_closed else "LIVE / IN PROGRESS"
+        c.drawString(left, top - 25 * mm - 4.5 * mm, f"Status: {status_label}")
+        c.drawRightString(right, top - 25 * mm - 4.5 * mm, f"Generated {datetime.utcnow():%d %B %Y %H:%M} UTC")
+
+        return top - 36 * mm
+
+    def ensure_space(y: float, header_fn=None) -> float:
+        """Starts a fresh page (with the letterhead and, if given, the current
+        position's header repeated) if the next row would land inside the
+        bottom margin -- reportlab's canvas has no built-in pagination."""
+        if y < bottom_margin:
+            c.showPage()
+            y = draw_letterhead()
+            if header_fn:
+                y = header_fn(y, True)
+        return y
+
+    y = draw_letterhead()
+
+    # ── Summary ──────────────────────────────────────────────────────────
+    c.setFillColor(forest)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(left, y, "SUMMARY")
+    c.setStrokeColor(forest)
+    c.setLineWidth(0.6)
+    c.line(left, y - 2 * mm, right, y - 2 * mm)
+    y -= 8 * mm
+
+    c.setFont("Helvetica", 9)
+    c.setFillColor(ink)
+    col_w = (right - left) / 3
+    c.drawString(left, y, f"Registered Voters: {voters_count}")
+    c.drawString(left + col_w, y, f"Votes Cast: {voted_count}")
+    c.drawString(left + 2 * col_w, y, f"Turnout: {turnout_percent}%")
+    y -= 14 * mm
+
+    # ── Per-position results ────────────────────────────────────────────
+    for r in results:
+        position = r["position"]
+
+        def draw_position_header(yy: float, continued: bool = False) -> float:
+            c.setFillColor(forest)
+            c.setFont("Helvetica-Bold", 11)
+            c.drawString(left, yy, position.title.upper() + (" (continued)" if continued else ""))
+            c.setStrokeColor(forest)
+            c.setLineWidth(0.6)
+            c.line(left, yy - 2 * mm, right, yy - 2 * mm)
+            return yy - 8 * mm
+
+        y = ensure_space(y)
+        y = draw_position_header(y)
+
+        if not r["contested"]:
+            candidate = r["candidate"]
+            yes, no, total = r["yes_votes"], r["no_votes"], r["total_votes"]
+            if total > 0 and yes > no:
+                outcome = "ELECTED" if is_closed else "PASSING"
+            elif total > 0 and no > yes:
+                outcome = "REJECTED" if is_closed else "FAILING"
+            elif total > 0:
+                outcome = "TIED"
+            else:
+                outcome = "NO VOTES"
+
+            y = ensure_space(y, draw_position_header)
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColor(ink)
+            c.drawString(left + 4 * mm, y, f"{candidate.name} (uncontested)")
+            c.setFillColor(green if outcome in ("ELECTED", "PASSING") else gray)
+            c.drawRightString(right, y, outcome)
+            y -= row_h
+
+            c.setFont("Helvetica", 9)
+            c.setFillColor(ink)
+            yes_pct = round((yes / total * 100), 1) if total else 0.0
+            no_pct = round((no / total * 100), 1) if total else 0.0
+            c.drawString(left + 8 * mm, y, f"Yes: {yes} ({yes_pct}%)")
+            c.drawString(left + 60 * mm, y, f"No: {no} ({no_pct}%)")
+            y -= row_h
+        else:
+            candidates = r["candidates"]
+            winner_votes = candidates[0]["votes"] if candidates else 0
+            for rank, cand_row in enumerate(candidates, start=1):
+                y = ensure_space(y, draw_position_header)
+                is_winner = cand_row["votes"] > 0 and cand_row["votes"] == winner_votes
+                c.setFont("Helvetica-Bold" if is_winner else "Helvetica", 9)
+                c.setFillColor(ink)
+                c.drawString(left + 4 * mm, y, f"{rank}. {cand_row['candidate'].name}")
+                c.drawString(left + 100 * mm, y, f"{cand_row['votes']} votes")
+                c.drawRightString(right - 25 * mm, y, f"{cand_row['percent']}%")
+                if is_winner:
+                    c.setFillColor(green if is_closed else gray)
+                    c.setFont("Helvetica-Bold", 8)
+                    c.drawRightString(right, y, "WINNER" if is_closed else "LEADING")
+                y -= row_h
+
+            y = ensure_space(y, draw_position_header)
+            c.setFont("Helvetica", 8)
+            c.setFillColor(gray)
+            c.drawString(left + 4 * mm, y, f"Total votes cast for this position: {r['total_votes']}")
+            y -= row_h
+
+        y -= 6 * mm
+
+    c.showPage()
+    c.save()
+    return buffer.getvalue()
 
 
 # Push interval for the results WebSocket below -- short enough that a vote
