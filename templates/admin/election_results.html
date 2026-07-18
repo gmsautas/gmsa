@@ -7,12 +7,6 @@
 {% include "admin/_election_tabs.html" %}
 
 <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
-  <div>
-    <h2 class="text-2xl font-extrabold text-forest-900">Results</h2>
-    <p class="text-sm text-ink-500 mt-1">
-      Aggregate tallies only — nullified votes are excluded, and individual ballots are never shown here or anywhere else.
-    </p>
-  </div>
   <div class="flex items-center gap-3">
     <a href="/admin/elections/{{ election.id }}/results/download" class="btn btn-primary">
       <i data-lucide="download" class="w-4 h-4"></i> Download Results

@@ -1090,6 +1090,33 @@ async def election_results_download(
     )
 
 
+def _resolve_candidate_photo(photo_url: str | None):
+    """Returns a reportlab ImageReader for a candidate's ballot photo, or None
+    if there isn't one or it can't be loaded. Uploaded photos are served from
+    our own /static/uploads/... and are read straight off disk; anything else
+    (an admin-pasted external URL) is fetched over HTTP with a short timeout
+    so one broken link can't hang report generation."""
+    if not photo_url:
+        return None
+    from reportlab.lib.utils import ImageReader
+
+    try:
+        if photo_url.startswith("/static/"):
+            path = storage.STATIC_DIR / photo_url[len("/static/") :]
+            if not path.exists():
+                return None
+            return ImageReader(str(path))
+        if photo_url.startswith(("http://", "https://")):
+            import httpx
+
+            resp = httpx.get(photo_url, timeout=3.0)
+            resp.raise_for_status()
+            return ImageReader(io.BytesIO(resp.content))
+    except Exception:
+        return None
+    return None
+
+
 def _render_election_results_pdf(
     *, election: Election, org, voters_count: int, voted_count: int, results: list[dict]
 ) -> bytes:
@@ -1106,14 +1133,15 @@ def _render_election_results_pdf(
     ink = HexColor("#111827")
     gray = HexColor("#6B7280")
     green = HexColor("#15803D")
+    line_gray = HexColor("#E5E7EB")
+    zebra_fill = HexColor("#F3F4F6")
+    white = HexColor("#FFFFFF")
 
     left = 20 * mm
     right = width - 20 * mm
     bottom_margin = 30 * mm
-    row_h = 7 * mm
 
     org_name = (org.full_name if org else None) or "GMSA UTAS"
-    tagline = (org.tagline if org else None) or ""
 
     is_closed = elections.effective_status(election) == "closed"
     turnout_percent = round((voted_count / voters_count * 100), 1) if voters_count else 0.0
@@ -1142,10 +1170,9 @@ def _render_election_results_pdf(
         c.setFillColor(forest)
         c.setFont("Helvetica-Bold", 16)
         c.drawString(text_x, top - 5 * mm, org_name)
-        c.setFont("Helvetica", 9)
-        c.setFillColor(gray)
-        if tagline:
-            c.drawString(text_x, top - 10 * mm, tagline)
+        c.setFont("Helvetica-Bold", 9)
+        c.setFillColor(forest)
+        c.drawString(text_x, top - 10.5 * mm, "GMSA ELECTORAL COMMISSION")
 
         c.setStrokeColor(forest)
         c.setLineWidth(1.2)
@@ -1160,7 +1187,7 @@ def _render_election_results_pdf(
         c.drawString(left, top - 25 * mm - 4.5 * mm, f"Status: {status_label}")
         c.drawRightString(right, top - 25 * mm - 4.5 * mm, f"Generated {datetime.utcnow():%d %B %Y %H:%M} UTC")
 
-        return top - 36 * mm
+        return top - 44 * mm
 
     def ensure_space(y: float, header_fn=None) -> float:
         """Starts a fresh page (with the letterhead and, if given, the current
@@ -1182,7 +1209,7 @@ def _render_election_results_pdf(
     c.setStrokeColor(forest)
     c.setLineWidth(0.6)
     c.line(left, y - 2 * mm, right, y - 2 * mm)
-    y -= 8 * mm
+    y -= 10 * mm
 
     c.setFont("Helvetica", 9)
     c.setFillColor(ink)
@@ -1190,23 +1217,58 @@ def _render_election_results_pdf(
     c.drawString(left, y, f"Registered Voters: {voters_count}")
     c.drawString(left + col_w, y, f"Votes Cast: {voted_count}")
     c.drawString(left + 2 * col_w, y, f"Turnout: {turnout_percent}%")
-    y -= 14 * mm
+    y -= 24 * mm
 
-    # ── Per-position results ────────────────────────────────────────────
+    # ── Per-position results, each rendered as a bordered table ────────────
+    PHOTO = 9 * mm
+    HEADER_H = 8 * mm
+    ROW_H = 13 * mm
+
+    col_photo_x = left
+    col_photo_w = 16 * mm
+
     for r in results:
         position = r["position"]
 
-        def draw_position_header(yy: float, continued: bool = False) -> float:
+        def draw_position_title(yy: float, continued: bool = False) -> float:
             c.setFillColor(forest)
             c.setFont("Helvetica-Bold", 11)
             c.drawString(left, yy, position.title.upper() + (" (continued)" if continued else ""))
             c.setStrokeColor(forest)
             c.setLineWidth(0.6)
             c.line(left, yy - 2 * mm, right, yy - 2 * mm)
-            return yy - 8 * mm
+            return yy - 9 * mm
+
+        def draw_photo_cell(img, row_bottom: float, candidate_name: str) -> None:
+            photo_x = col_photo_x + (col_photo_w - PHOTO) / 2
+            photo_y = row_bottom + (ROW_H - PHOTO) / 2
+            if img is not None:
+                c.saveState()
+                try:
+                    # Clip to a circle so a real ballot photo reads the same as
+                    # the initials fallback below, matching the round avatars
+                    # used everywhere else in the app's UI.
+                    clip = c.beginPath()
+                    clip.circle(photo_x + PHOTO / 2, photo_y + PHOTO / 2, PHOTO / 2)
+                    c.clipPath(clip, stroke=0, fill=0)
+                    c.drawImage(
+                        img, photo_x, photo_y, width=PHOTO, height=PHOTO,
+                        preserveAspectRatio=True, anchor="c", mask="auto",
+                    )
+                    return
+                except Exception:
+                    pass
+                finally:
+                    c.restoreState()
+            c.setFillColor(HexColor("#D1D5DB"))
+            c.circle(photo_x + PHOTO / 2, photo_y + PHOTO / 2, PHOTO / 2, fill=1, stroke=0)
+            c.setFillColor(white)
+            c.setFont("Helvetica-Bold", 7.5)
+            initials = "".join(w[0] for w in candidate_name.split()[:2]).upper() or "?"
+            c.drawCentredString(photo_x + PHOTO / 2, photo_y + PHOTO / 2 - 2.6, initials)
 
         y = ensure_space(y)
-        y = draw_position_header(y)
+        y = draw_position_title(y)
 
         if not r["contested"]:
             candidate = r["candidate"]
@@ -1220,45 +1282,113 @@ def _render_election_results_pdf(
             else:
                 outcome = "NO VOTES"
 
-            y = ensure_space(y, draw_position_header)
-            c.setFont("Helvetica-Bold", 9)
-            c.setFillColor(ink)
-            c.drawString(left + 4 * mm, y, f"{candidate.name} (uncontested)")
-            c.setFillColor(green if outcome in ("ELECTED", "PASSING") else gray)
-            c.drawRightString(right, y, outcome)
-            y -= row_h
+            name_x = col_photo_x + col_photo_w
+            yes_x = left + 90 * mm
+            no_x = left + 122 * mm
+            status_x = left + 148 * mm
 
-            c.setFont("Helvetica", 9)
-            c.setFillColor(ink)
+            y = ensure_space(y, draw_position_title)
+            c.setFillColor(forest)
+            c.rect(left, y - HEADER_H, right - left, HEADER_H, fill=1, stroke=0)
+            c.setFillColor(white)
+            c.setFont("Helvetica-Bold", 8)
+            text_y = y - HEADER_H + 2.6 * mm
+            c.drawString(name_x + 2 * mm, text_y, "CANDIDATE (UNCONTESTED)")
+            c.drawString(yes_x, text_y, "YES")
+            c.drawString(no_x, text_y, "NO")
+            c.drawString(status_x, text_y, "RESULT")
+            y -= HEADER_H
+
+            row_bottom = y - ROW_H
+            c.setFillColor(zebra_fill)
+            c.rect(left, row_bottom, right - left, ROW_H, fill=1, stroke=0)
+            c.setStrokeColor(line_gray)
+            c.setLineWidth(0.4)
+            c.rect(left, row_bottom, right - left, ROW_H, fill=0, stroke=1)
+            for x in (name_x, yes_x - 2 * mm, no_x - 2 * mm, status_x - 2 * mm):
+                c.line(x, row_bottom, x, y)
+
+            draw_photo_cell(_resolve_candidate_photo(candidate.photo_url), row_bottom, candidate.name)
+
+            text_mid_y = row_bottom + ROW_H / 2 - 1.2 * mm
             yes_pct = round((yes / total * 100), 1) if total else 0.0
             no_pct = round((no / total * 100), 1) if total else 0.0
-            c.drawString(left + 8 * mm, y, f"Yes: {yes} ({yes_pct}%)")
-            c.drawString(left + 60 * mm, y, f"No: {no} ({no_pct}%)")
-            y -= row_h
+            c.setFillColor(ink)
+            c.setFont("Helvetica-Bold", 9)
+            c.drawString(name_x + 2 * mm, text_mid_y, candidate.name[:34])
+            c.setFont("Helvetica", 9)
+            c.drawString(yes_x, text_mid_y, f"{yes} ({yes_pct}%)")
+            c.drawString(no_x, text_mid_y, f"{no} ({no_pct}%)")
+            c.setFillColor(green if outcome in ("ELECTED", "PASSING") else gray)
+            c.setFont("Helvetica-Bold", 8)
+            c.drawString(status_x, text_mid_y, outcome)
+            y = row_bottom
         else:
             candidates = r["candidates"]
             winner_votes = candidates[0]["votes"] if candidates else 0
+
+            name_x = col_photo_x + col_photo_w
+            votes_x = left + 105 * mm
+            pct_x = left + 130 * mm
+            status_x = left + 150 * mm
+
+            def draw_table_header(yy: float, continued: bool = False) -> float:
+                yy = draw_position_title(yy, continued) if continued else yy
+                c.setFillColor(forest)
+                c.rect(left, yy - HEADER_H, right - left, HEADER_H, fill=1, stroke=0)
+                c.setFillColor(white)
+                c.setFont("Helvetica-Bold", 8)
+                text_y = yy - HEADER_H + 2.6 * mm
+                c.drawString(name_x + 2 * mm, text_y, "CANDIDATE")
+                c.drawString(votes_x, text_y, "VOTES")
+                c.drawString(pct_x, text_y, "%")
+                c.drawString(status_x, text_y, "RESULT")
+                return yy - HEADER_H
+
+            y = ensure_space(y, draw_position_title)
+            y = draw_table_header(y)
+
             for rank, cand_row in enumerate(candidates, start=1):
-                y = ensure_space(y, draw_position_header)
+                y = ensure_space(y, draw_table_header)
                 is_winner = cand_row["votes"] > 0 and cand_row["votes"] == winner_votes
-                c.setFont("Helvetica-Bold" if is_winner else "Helvetica", 9)
+                row_bottom = y - ROW_H
+
+                if rank % 2 == 0:
+                    c.setFillColor(zebra_fill)
+                    c.rect(left, row_bottom, right - left, ROW_H, fill=1, stroke=0)
+                c.setStrokeColor(line_gray)
+                c.setLineWidth(0.4)
+                c.rect(left, row_bottom, right - left, ROW_H, fill=0, stroke=1)
+                for x in (name_x, votes_x - 2 * mm, pct_x - 2 * mm, status_x - 2 * mm):
+                    c.line(x, row_bottom, x, y)
+
+                draw_photo_cell(
+                    _resolve_candidate_photo(cand_row["candidate"].photo_url),
+                    row_bottom,
+                    cand_row["candidate"].name,
+                )
+
+                text_mid_y = row_bottom + ROW_H / 2 - 1.2 * mm
                 c.setFillColor(ink)
-                c.drawString(left + 4 * mm, y, f"{rank}. {cand_row['candidate'].name}")
-                c.drawString(left + 100 * mm, y, f"{cand_row['votes']} votes")
-                c.drawRightString(right - 25 * mm, y, f"{cand_row['percent']}%")
+                c.setFont("Helvetica-Bold" if is_winner else "Helvetica", 9)
+                c.drawString(name_x + 2 * mm, text_mid_y, f"{rank}. {cand_row['candidate'].name}"[:36])
+                c.setFont("Helvetica", 9)
+                c.drawString(votes_x, text_mid_y, str(cand_row["votes"]))
+                c.drawString(pct_x, text_mid_y, f"{cand_row['percent']}%")
                 if is_winner:
                     c.setFillColor(green if is_closed else gray)
                     c.setFont("Helvetica-Bold", 8)
-                    c.drawRightString(right, y, "WINNER" if is_closed else "LEADING")
-                y -= row_h
+                    c.drawString(status_x, text_mid_y, "WINNER" if is_closed else "LEADING")
+                y = row_bottom
 
-            y = ensure_space(y, draw_position_header)
+            y -= 5 * mm
+            y = ensure_space(y, draw_position_title)
             c.setFont("Helvetica", 8)
             c.setFillColor(gray)
-            c.drawString(left + 4 * mm, y, f"Total votes cast for this position: {r['total_votes']}")
-            y -= row_h
+            c.drawString(left, y, f"Total votes cast for this position: {r['total_votes']}")
+            y -= 6 * mm
 
-        y -= 6 * mm
+        y -= 12 * mm
 
     c.showPage()
     c.save()
